@@ -1,0 +1,161 @@
+{
+  "surface": "report",
+  "manifest": {
+    "version": 1,
+    "title": "DeepSeek V4 Pro 与 Grok 4.5：小说创作阶段上下文基准",
+    "sources": [
+      {
+        "id": "benchmark_scores",
+        "label": "context-window-v1 聚合评分",
+        "query": {
+          "engine": "DuckDB",
+          "language": "sql",
+          "description": "把 scripts/analyze_context_benchmark.py 生成并经代表样本复核的阶段评分整理为报告数据集。",
+          "sql": "SELECT * FROM (VALUES ('首次共创','DeepSeek V4 Pro',7.8),('首次共创','Grok 4.5',9.1),('资料分析','DeepSeek V4 Pro',7.2),('资料分析','Grok 4.5',9.2),('骨架规划','DeepSeek V4 Pro',8.6),('骨架规划','Grok 4.5',9.0),('详细提纲','DeepSeek V4 Pro',8.3),('详细提纲','Grok 4.5',8.8),('开篇正文','DeepSeek V4 Pro',8.4),('开篇正文','Grok 4.5',7.2),('中段续写','DeepSeek V4 Pro',8.1),('中段续写','Grok 4.5',8.3),('弧尾审校','DeepSeek V4 Pro',7.8),('弧尾审校','Grok 4.5',8.7)) AS scores(stage, model, score)",
+          "executed_at": "2026-07-12T12:00:00+08:00",
+          "metric_definitions": [
+            "score: 10 分制工程质量分，综合结构/协议合规、约束与篇幅服从、信息覆盖、可执行性及代表样本审阅。"
+          ]
+        }
+      },
+      {
+        "id": "benchmark_recommendations",
+        "label": "context-window-v1 阶段建议",
+        "query": {
+          "engine": "DuckDB",
+          "language": "sql",
+          "description": "将阶段评分和各上下文档位的通过情况整理为质量优先路由建议。",
+          "sql": "SELECT * FROM (VALUES (1,'首次共创','Grok 4.5','DeepSeek 48K / Grok 48K'),(2,'资料分析','Grok 4.5','DeepSeek 48K / Grok 72K'),(3,'骨架规划','Grok 4.5','DeepSeek 96K / Grok 96K'),(4,'详细提纲','Grok 4.5','DeepSeek 96K / Grok 48-64K'),(5,'开篇正文','DeepSeek V4 Pro','DeepSeek 128K / Grok 64K'),(6,'中段续写','Grok 4.5','DeepSeek 128K / Grok 64K'),(7,'弧尾审校','Grok 4.5','DeepSeek 128K / Grok 64K')) AS recommendations(ord, stage, model, contexts)",
+          "executed_at": "2026-07-12T12:00:00+08:00"
+        }
+      }
+    ],
+    "blocks": [
+      {
+        "id": "summary",
+        "type": "markdown",
+        "body": "# DeepSeek V4 Pro 与 Grok 4.5：小说创作阶段上下文基准\n\n## 技术摘要\n\n在质量优先的前提下，不应给所有模型、所有阶段使用同一个尽可能大的上下文窗口。Grok 4.5 在首次共创、资料分析、骨架、详细提纲与弧尾审校上整体领先；DeepSeek V4 Pro 在开篇正文上明显更可靠。推荐按阶段选模型，并在运行时为模型应用隐藏的上下文画像。"
+      },
+      {
+        "id": "score_intro",
+        "type": "markdown",
+        "body": "## 阶段质量评分\n\n评分为 10 分制工程选型分，综合协议与结构合规、约束和篇幅服从、信息覆盖、可执行性及代表样本审阅；速度不直接计入质量分。"
+      },
+      {
+        "id": "quality_chart",
+        "type": "chart",
+        "chartId": "stage_quality",
+        "layout": "full"
+      },
+      {
+        "id": "findings",
+        "type": "markdown",
+        "body": "## 关键发现\n\n- Grok 4.5 的优势集中在结构化推理和审校：首次共创 6/6 严格 XML 合规，资料分析到 72K 时覆盖和事件上限均合规。\n- DeepSeek V4 Pro 更适合开篇正文；随着可用上下文增加，其篇幅服从总体改善。\n- 更长输入没有稳定增益：DeepSeek 的资料分析在 96K 两次均失败，Grok 的开篇在 160K 仍明显短于目标。\n- 详细提纲无需一味扩窗：Grok 在 48K 已两次完整；DeepSeek 需要避开 48K 的截断风险，推荐 96K。"
+      },
+      {
+        "id": "recommendation_intro",
+        "type": "markdown",
+        "body": "## 阶段选型与上下文建议\n\n下表是质量优先的首选模型。上下文是运行边界而非必须填满的输入量；系统仍应只装载任务所需证据。"
+      },
+      {
+        "id": "recommendation_table",
+        "type": "table",
+        "tableId": "stage_recommendations"
+      },
+      {
+        "id": "profiles",
+        "type": "markdown",
+        "body": "## 隐藏运行画像\n\n为兼顾质量、工具调用余量和较少重试，实际实现使用：DeepSeek 的 Coordinator 64K、Architect 96K、Writer 128K、Editor 128K；Grok 的 Coordinator 64K、Architect 96K、Writer 64K、Editor 64K。未知模型采用保守默认值 64K / 96K / 96K / 128K。64K 和 128K 是在 48K、96K、160K 实测档位之间选取的安全运行边界，不是额外测试档。"
+      },
+      {
+        "id": "method",
+        "type": "markdown",
+        "body": "## 范围、数据与方法\n\n每个模型上限 40 次调用；DeepSeek 完成 40 次，Grok 完成 38 次，另有 2 次在并发策略切换时中断但仍计入额度，未补跑。两模型使用相同任务、资料与目标档位。创作与规划测试约 48K、96K、160K，资料分析测试约 12K、24K、48K、72K、96K；单模型最多 3 路并发，两模型之间可并发。聚合指标不含小说原文或完整模型输出。"
+      },
+      {
+        "id": "limitations",
+        "type": "markdown",
+        "body": "## 局限与稳健性\n\n每个模型 × 阶段 × 档位通常只有 1–2 个样本，因此分数适合工程路由，不代表统计显著性。首次共创的 DeepSeek 有 5/6 未严格闭合 `<reply>`，但生产解析器能在下一个标签处容错，因此这是协议质量缺陷，不等同于 5 次必然重试。后续应把真实项目中的重试率、截断率和用户采纳率纳入持续校准。"
+      },
+      {
+        "id": "next",
+        "type": "markdown",
+        "body": "## 下一步\n\n1. 上线项目级阶段模型路由，并保留 Agent 高级路由作为兜底和专家覆盖。\n2. 记录每阶段的模型、上下文利用率、解析失败、重试与用户回退，但不向普通用户暴露窗口参数。\n3. 新模型接入时新增隐藏画像和小规模分层基准，不改动通用常量。\n\n## 进一步问题\n\n需要持续验证的重点是：真实长篇项目中，阶段路由是否减少重试；摘要完整度不足时，定向回读是否能维持弧尾质量；以及不同提供方的同名模型是否存在可观测的版本漂移。"
+      }
+    ],
+    "charts": [
+      {
+        "id": "stage_quality",
+        "title": "不同创作阶段的模型质量评分",
+        "subtitle": "Grok 领先规划与分析，DeepSeek 领先开篇正文。",
+        "headerMarkdown": "同一阶段比较两个模型；满分为 **10 分**。",
+        "type": "bar",
+        "dataset": "stage_scores",
+        "sourceId": "benchmark_scores",
+        "layout": "full",
+        "encodings": {
+          "x": { "field": "stage", "type": "nominal", "label": "阶段" },
+          "y": { "field": "score", "type": "quantitative", "label": "质量评分", "format": "number" },
+          "color": { "field": "model", "type": "nominal", "label": "模型" }
+        },
+        "yAxisTitle": "质量评分",
+        "valueFormat": "number"
+      }
+    ],
+    "tables": [
+      {
+        "id": "stage_recommendations",
+        "title": "质量优先的阶段路由",
+        "dataset": "recommendations",
+        "sourceId": "benchmark_recommendations",
+        "columns": [
+          { "field": "order", "label": "顺序" },
+          { "field": "stage", "label": "阶段" },
+          { "field": "model", "label": "首选模型" },
+          { "field": "contexts", "label": "模型上下文建议" }
+        ],
+        "defaultSort": { "field": "order", "direction": "asc" }
+      }
+    ]
+  },
+  "snapshot": {
+    "version": 1,
+    "status": "ready",
+    "generated_at": "2026-07-12T12:00:00+08:00",
+    "datasets": {
+      "stage_scores": [
+        { "stage": "首次共创", "model": "DeepSeek V4 Pro", "score": 7.8 },
+        { "stage": "首次共创", "model": "Grok 4.5", "score": 9.1 },
+        { "stage": "资料分析", "model": "DeepSeek V4 Pro", "score": 7.2 },
+        { "stage": "资料分析", "model": "Grok 4.5", "score": 9.2 },
+        { "stage": "骨架规划", "model": "DeepSeek V4 Pro", "score": 8.6 },
+        { "stage": "骨架规划", "model": "Grok 4.5", "score": 9.0 },
+        { "stage": "详细提纲", "model": "DeepSeek V4 Pro", "score": 8.3 },
+        { "stage": "详细提纲", "model": "Grok 4.5", "score": 8.8 },
+        { "stage": "开篇正文", "model": "DeepSeek V4 Pro", "score": 8.4 },
+        { "stage": "开篇正文", "model": "Grok 4.5", "score": 7.2 },
+        { "stage": "中段续写", "model": "DeepSeek V4 Pro", "score": 8.1 },
+        { "stage": "中段续写", "model": "Grok 4.5", "score": 8.3 },
+        { "stage": "弧尾审校", "model": "DeepSeek V4 Pro", "score": 7.8 },
+        { "stage": "弧尾审校", "model": "Grok 4.5", "score": 8.7 }
+      ],
+      "recommendations": [
+        { "order": 1, "stage": "首次共创", "model": "Grok 4.5", "contexts": "DeepSeek 48K / Grok 48K" },
+        { "order": 2, "stage": "资料分析", "model": "Grok 4.5", "contexts": "DeepSeek 48K / Grok 72K" },
+        { "order": 3, "stage": "骨架规划", "model": "Grok 4.5", "contexts": "DeepSeek 96K / Grok 96K" },
+        { "order": 4, "stage": "详细提纲", "model": "Grok 4.5", "contexts": "DeepSeek 96K / Grok 48–64K" },
+        { "order": 5, "stage": "开篇正文", "model": "DeepSeek V4 Pro", "contexts": "DeepSeek 128K / Grok 64K" },
+        { "order": 6, "stage": "中段续写", "model": "Grok 4.5", "contexts": "DeepSeek 128K / Grok 64K" },
+        { "order": 7, "stage": "弧尾审校", "model": "Grok 4.5", "contexts": "DeepSeek 128K / Grok 64K" }
+      ]
+    }
+  },
+  "sources": [
+    {
+      "id": "benchmark_aggregate",
+      "name": "AINovel context-window-v1 aggregate",
+      "type": "benchmark",
+      "description": "40-call-per-model staged benchmark aggregate; raw prompts and responses excluded from the repository."
+    }
+  ]
+}

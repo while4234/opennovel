@@ -1,0 +1,8 @@
+{
+  "runtime_root": "C:\\path\\to\\runtime-root",
+  "validation_root": "C:\\path\\to\\isolated-validation-root",
+  "normal_project_id": "explicit-normal-project-id",
+  "adaptation_project_id": "explicit-adaptation-project-id",
+  "report_path": "C:\\path\\to\\private-evidence\\report.json",
+  "keep_clones": false
+}

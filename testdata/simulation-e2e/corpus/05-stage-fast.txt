@@ -1,0 +1,3 @@
+FIXTURE_ID=stage-fast
+In this stage, scenes accelerate by shortening the pause between a discovery
+and the response. This deliberately contradicts the slow-stage fixture.

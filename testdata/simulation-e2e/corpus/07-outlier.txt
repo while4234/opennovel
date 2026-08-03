@@ -1,0 +1,3 @@
+FIXTURE_ID=outlier
+This isolated interlude uses a decorative inventory before every action. No
+other body segment uses that device.

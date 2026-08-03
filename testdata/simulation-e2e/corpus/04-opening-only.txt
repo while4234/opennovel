@@ -1,0 +1,3 @@
+FIXTURE_ID=opening-only
+Only the opening begins with an unanswered practical question. Later segments
+do not repeat this local technique.

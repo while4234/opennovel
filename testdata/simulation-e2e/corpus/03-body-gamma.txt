@@ -1,0 +1,4 @@
+FIXTURE_ID=body-gamma
+The scene releases one fact, demonstrates its consequence through action, and
+ends on a choice. The synthetic phrase 琥珀潮汐折叠七枚纸月 belongs only to the
+local safety fixture.

@@ -1,0 +1,9 @@
+.gitattributes text eol=lf
+
+# Vite writes the embedded Web build output with LF line endings.
+# Keep these tracked artifacts LF on Windows so rebuilding/restarting does not
+# leave the working tree dirty under core.autocrlf=true.
+internal/entry/web/static/index.html text eol=lf
+internal/entry/web/static/assets/*.css text eol=lf
+internal/entry/web/static/assets/*.js text eol=lf
+internal/entry/web/ui/vite.config.js text eol=lf

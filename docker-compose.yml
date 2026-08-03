@@ -1,0 +1,11 @@
+services:
+  ainovel:
+    image: ghcr.io/voocel/ainovel-cli:latest
+    build:
+      context: .
+    volumes:
+      - ./config:/home/ainovel/.ainovel
+      - ./workspace:/workspace
+      - ./authority:/var/lib/ainovel
+    ports:
+      - "9898:9898"

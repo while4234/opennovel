@@ -1,0 +1,4 @@
+FIXTURE_ID=body-beta
+A mechanic reveals one fact, lets the consequence alter the available route,
+and then chooses a cost. The sequence is expressed differently but keeps the
+same reusable technique.

@@ -1,0 +1,8 @@
+stage,deepseek_v4_pro_quality,grok_4_5_quality,recommended_model,deepseek_recommended_context,grok_recommended_context,evidence_summary
+首次共创 draft,7.8,9.1,grok-4.5,48K,48K,"Grok 6/6 严格 XML 合规；DeepSeek 内容可用但 5/6 漏 reply 闭合标签，生产容错解析器可接收"
+资料分析,7.2,9.2,grok-4.5,48K,72K,"DeepSeek 96K 两次均失败；Grok 72K 两次完全合规，96K 仅一次 events 超限"
+骨架规划,8.6,9.0,grok-4.5,96K,96K,"两者 48K/96K 均能形成四弧；DeepSeek 160K 一次章节范围字段漂移，Grok 96K 样本更具体但有一次中断缺样"
+详细提纲,8.3,8.8,grok-4.5,96K,48-64K,"DeepSeek 48K 一次截断；两者 96K/160K 结构稳定，Grok 48K 已两次完整且更快"
+开篇正文,8.4,7.2,deepseek-v4-pro,128K,64K,"DeepSeek 随上下文增加更接近目标篇幅；Grok 三档均明显短于 2600-3200 字要求"
+中段续写,8.1,8.3,grok-4.5,128K,64K,"两者均有篇幅波动；Grok 48K 的指令合规率最好，DeepSeek 160K 较接近目标但不稳定"
+弧尾审校与摘要,7.8,8.7,grok-4.5,128K,64K,"Grok 48K 唯一严格命中目标篇幅，DeepSeek 三档都明显偏长；更长上下文未显示质量增益"

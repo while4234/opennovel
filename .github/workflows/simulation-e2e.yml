@@ -1,0 +1,29 @@
+name: Simulation Offline Baseline
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  simulation-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Run offline simulation baseline
+        run: go run ./cmd/simulation-eval -fixture testdata/simulation-e2e -json .cache/simulation-e2e/report.json
+      - name: Upload machine-readable report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simulation-e2e-report
+          path: .cache/simulation-e2e/report.json
+          if-no-files-found: warn

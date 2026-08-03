@@ -1,0 +1,3 @@
+FIXTURE_ID=stage-slow
+In this stage, scenes decelerate by lengthening the pause between a discovery
+and the response. This deliberately contradicts the fast-stage fixture.

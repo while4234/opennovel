@@ -1,0 +1,329 @@
+{
+  "version": "stage-quality-v1",
+  "generated_at": "2026-07-28T18:51:48.6869201+08:00",
+  "judge": {
+    "provider": "codex-login",
+    "model": "gpt-5.6-sol",
+    "reasoning_effort": "xhigh"
+  },
+  "candidates": [
+    {
+      "candidate": "grok-oauth/grok-4.5@xhigh",
+      "provider": "grok-oauth",
+      "model": "grok-4.5",
+      "reasoning_effort": "xhigh",
+      "overall_score": 90.9,
+      "non_creative_score": 91,
+      "writing_score": 90.4,
+      "writer_tooling_score": 96,
+      "stage_wins": 2,
+      "stages": [
+        {
+          "stage": "co_create",
+          "samples": 3,
+          "hard_mean": 100,
+          "judge_mean": 93,
+          "final_mean": 95.1,
+          "stddev": 2.8
+        },
+        {
+          "stage": "source_analysis",
+          "samples": 3,
+          "hard_mean": 82.9,
+          "judge_mean": 91,
+          "final_mean": 88.6,
+          "stddev": 0.8
+        },
+        {
+          "stage": "skeleton",
+          "samples": 3,
+          "hard_mean": 100,
+          "judge_mean": 86,
+          "final_mean": 90.2,
+          "stddev": 8
+        },
+        {
+          "stage": "detail_outline",
+          "samples": 3,
+          "hard_mean": 100,
+          "judge_mean": 86,
+          "final_mean": 90.2,
+          "stddev": 1.9
+        },
+        {
+          "stage": "writing",
+          "samples": 3,
+          "hard_mean": 100,
+          "judge_mean": 86.3,
+          "final_mean": 90.4,
+          "stddev": 1.1
+        },
+        {
+          "stage": "review",
+          "samples": 3,
+          "hard_mean": 82.5,
+          "judge_mean": 98.3,
+          "final_mean": 93.6,
+          "stddev": 0.4
+        },
+        {
+          "stage": "character_analysis",
+          "samples": 3,
+          "hard_mean": 100,
+          "judge_mean": 95,
+          "final_mean": 96.5,
+          "stddev": 0.7
+        },
+        {
+          "stage": "character_review",
+          "samples": 3,
+          "hard_mean": 100,
+          "judge_mean": 75.3,
+          "final_mean": 82.7,
+          "stddev": 14.5
+        }
+      ],
+      "writer_tooling": [
+        {
+          "case_id": "writer_tooling__consistency_exact_evidence",
+          "hard_score": 96.1,
+          "judge_score": 92,
+          "final_score": 93.2
+        },
+        {
+          "case_id": "writer_tooling__consistency_missing_scene",
+          "hard_score": 90,
+          "judge_score": 100,
+          "final_score": 97
+        },
+        {
+          "case_id": "writer_tooling__de_ai_batch_repair",
+          "hard_score": 100,
+          "judge_score": 97,
+          "final_score": 97.9
+        }
+      ]
+    },
+    {
+      "candidate": "grok-oauth/grok-4.5@high",
+      "provider": "grok-oauth",
+      "model": "grok-4.5",
+      "reasoning_effort": "high",
+      "overall_score": 90.7,
+      "non_creative_score": 93,
+      "writing_score": 74.8,
+      "writer_tooling_score": 94.9,
+      "stage_wins": 6,
+      "stages": [
+        {
+          "stage": "co_create",
+          "samples": 3,
+          "hard_mean": 100,
+          "judge_mean": 94.7,
+          "final_mean": 96.3,
+          "stddev": 1.5
+        },
+        {
+          "stage": "source_analysis",
+          "samples": 3,
+          "hard_mean": 82.9,
+          "judge_mean": 92.7,
+          "final_mean": 89.8,
+          "stddev": 2.9
+        },
+        {
+          "stage": "skeleton",
+          "samples": 3,
+          "hard_mean": 100,
+          "judge_mean": 86.7,
+          "final_mean": 90.7,
+          "stddev": 5.4
+        },
+        {
+          "stage": "detail_outline",
+          "samples": 3,
+          "hard_mean": 100,
+          "judge_mean": 89,
+          "final_mean": 92.3,
+          "stddev": 1.2
+        },
+        {
+          "stage": "writing",
+          "samples": 3,
+          "hard_mean": 95,
+          "judge_mean": 80.7,
+          "final_mean": 74.8,
+          "stddev": 23.5
+        },
+        {
+          "stage": "review",
+          "samples": 3,
+          "hard_mean": 82.5,
+          "judge_mean": 98.7,
+          "final_mean": 93.9,
+          "stddev": 0.4
+        },
+        {
+          "stage": "character_analysis",
+          "samples": 3,
+          "hard_mean": 100,
+          "judge_mean": 94.3,
+          "final_mean": 96,
+          "stddev": 1.1
+        },
+        {
+          "stage": "character_review",
+          "samples": 3,
+          "hard_mean": 100,
+          "judge_mean": 88.7,
+          "final_mean": 92.1,
+          "stddev": 5.3
+        }
+      ],
+      "writer_tooling": [
+        {
+          "case_id": "writer_tooling__consistency_exact_evidence",
+          "hard_score": 96.1,
+          "judge_score": 92,
+          "final_score": 93.2
+        },
+        {
+          "case_id": "writer_tooling__consistency_missing_scene",
+          "hard_score": 90,
+          "judge_score": 100,
+          "final_score": 97
+        },
+        {
+          "case_id": "writer_tooling__de_ai_batch_repair",
+          "hard_score": 100,
+          "judge_score": 92,
+          "final_score": 94.4
+        }
+      ]
+    },
+    {
+      "candidate": "deepseek-infa/deepseek-v4-pro",
+      "provider": "deepseek-infa",
+      "model": "deepseek-v4-pro",
+      "overall_score": 75.8,
+      "non_creative_score": 80.2,
+      "writing_score": 45.2,
+      "writer_tooling_score": 93.2,
+      "stage_wins": 0,
+      "stages": [
+        {
+          "stage": "co_create",
+          "samples": 3,
+          "hard_mean": 100,
+          "judge_mean": 78.7,
+          "final_mean": 85.1,
+          "stddev": 3.3
+        },
+        {
+          "stage": "source_analysis",
+          "samples": 3,
+          "hard_mean": 82,
+          "judge_mean": 90,
+          "final_mean": 87.6,
+          "stddev": 3.5
+        },
+        {
+          "stage": "skeleton",
+          "samples": 3,
+          "hard_mean": 100,
+          "judge_mean": 62.7,
+          "final_mean": 73.9,
+          "stddev": 11.7
+        },
+        {
+          "stage": "detail_outline",
+          "samples": 3,
+          "hard_mean": 100,
+          "judge_mean": 60,
+          "final_mean": 72,
+          "stddev": 5.5
+        },
+        {
+          "stage": "writing",
+          "samples": 3,
+          "hard_mean": 85,
+          "judge_mean": 54,
+          "final_mean": 45.2,
+          "stddev": 25.5
+        },
+        {
+          "stage": "review",
+          "samples": 3,
+          "hard_mean": 82.5,
+          "judge_mean": 93.3,
+          "final_mean": 90.1,
+          "stddev": 2.8
+        },
+        {
+          "stage": "character_analysis",
+          "samples": 3,
+          "hard_mean": 100,
+          "judge_mean": 75.3,
+          "final_mean": 82.7,
+          "stddev": 4.6
+        },
+        {
+          "stage": "character_review",
+          "samples": 3,
+          "hard_mean": 100,
+          "judge_mean": 57.3,
+          "final_mean": 70.1,
+          "stddev": 14
+        }
+      ],
+      "writer_tooling": [
+        {
+          "case_id": "writer_tooling__consistency_exact_evidence",
+          "hard_score": 100,
+          "judge_score": 92,
+          "final_score": 94.4
+        },
+        {
+          "case_id": "writer_tooling__consistency_missing_scene",
+          "hard_score": 90,
+          "judge_score": 91,
+          "final_score": 90.7
+        },
+        {
+          "case_id": "writer_tooling__de_ai_batch_repair",
+          "hard_score": 100,
+          "judge_score": 92,
+          "final_score": 94.4
+        }
+      ]
+    }
+  ],
+  "comparisons": [
+    {
+      "left_candidate": "deepseek-infa/deepseek-v4-pro",
+      "right_candidate": "grok-oauth/grok-4.5@high",
+      "mean_paired_delta": -14.9,
+      "confidence_low": -22.1,
+      "confidence_high": -8,
+      "weak_advantage": false
+    },
+    {
+      "left_candidate": "deepseek-infa/deepseek-v4-pro",
+      "right_candidate": "grok-oauth/grok-4.5@xhigh",
+      "mean_paired_delta": -15.1,
+      "confidence_low": -22.2,
+      "confidence_high": -9,
+      "weak_advantage": false
+    },
+    {
+      "left_candidate": "grok-oauth/grok-4.5@high",
+      "right_candidate": "grok-oauth/grok-4.5@xhigh",
+      "mean_paired_delta": -0.2,
+      "confidence_low": -4.6,
+      "confidence_high": 3.1,
+      "weak_advantage": true
+    }
+  ],
+  "winner": "grok-oauth/grok-4.5@xhigh",
+  "conclusion": "grok-oauth/grok-4.5@xhigh 排名第一（至少一组优势较弱）。grok-oauth/grok-4.5@xhigh：总分 90.9、非创作 91.0、正文 90.4、Writer 工具 96.0；grok-oauth/grok-4.5@high：总分 90.7、非创作 93.0、正文 74.8、Writer 工具 94.9；deepseek-infa/deepseek-v4-pro：总分 75.8、非创作 80.2、正文 45.2、Writer 工具 93.2。"
+}

@@ -1,0 +1,719 @@
+[
+  {
+    "model": "deepseek-yuanyu-0__deepseek-v4-pro",
+    "stage": "arc_close_edit",
+    "target_tokens": 48000,
+    "attempts": 1,
+    "completed": 1,
+    "strict_successes": 0,
+    "strict_success_rate": 0.0,
+    "mean_latency_seconds": 25.94,
+    "mean_actual_input_tokens": 20709,
+    "mean_output_tokens": 2958,
+    "mean_output_chars": 4775,
+    "failure_counts": {
+      "prose_length": 1
+    }
+  },
+  {
+    "model": "deepseek-yuanyu-0__deepseek-v4-pro",
+    "stage": "arc_close_edit",
+    "target_tokens": 96000,
+    "attempts": 1,
+    "completed": 1,
+    "strict_successes": 0,
+    "strict_success_rate": 0.0,
+    "mean_latency_seconds": 25.4,
+    "mean_actual_input_tokens": 40981,
+    "mean_output_tokens": 3279,
+    "mean_output_chars": 5364,
+    "failure_counts": {
+      "prose_length": 1
+    }
+  },
+  {
+    "model": "deepseek-yuanyu-0__deepseek-v4-pro",
+    "stage": "arc_close_edit",
+    "target_tokens": 160000,
+    "attempts": 1,
+    "completed": 1,
+    "strict_successes": 0,
+    "strict_success_rate": 0.0,
+    "mean_latency_seconds": 25.04,
+    "mean_actual_input_tokens": 67135,
+    "mean_output_tokens": 2620,
+    "mean_output_chars": 4157,
+    "failure_counts": {
+      "prose_length": 1
+    }
+  },
+  {
+    "model": "deepseek-yuanyu-0__deepseek-v4-pro",
+    "stage": "detail_outline",
+    "target_tokens": 48000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 1,
+    "strict_success_rate": 0.5,
+    "mean_latency_seconds": 57.89,
+    "mean_actual_input_tokens": 21405,
+    "mean_output_tokens": 5990.5,
+    "mean_output_chars": 10009,
+    "failure_counts": {
+      "invalid_json": 1,
+      "truncated": 1
+    }
+  },
+  {
+    "model": "deepseek-yuanyu-0__deepseek-v4-pro",
+    "stage": "detail_outline",
+    "target_tokens": 96000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 2,
+    "strict_success_rate": 1.0,
+    "mean_latency_seconds": 42.09,
+    "mean_actual_input_tokens": 42031,
+    "mean_output_tokens": 4584,
+    "mean_output_chars": 7874,
+    "failure_counts": {}
+  },
+  {
+    "model": "deepseek-yuanyu-0__deepseek-v4-pro",
+    "stage": "detail_outline",
+    "target_tokens": 160000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 2,
+    "strict_success_rate": 1.0,
+    "mean_latency_seconds": 47.64,
+    "mean_actual_input_tokens": 69398,
+    "mean_output_tokens": 4679.5,
+    "mean_output_chars": 7476,
+    "failure_counts": {}
+  },
+  {
+    "model": "deepseek-yuanyu-0__deepseek-v4-pro",
+    "stage": "initial_cocreate_draft",
+    "target_tokens": 48000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 0,
+    "strict_success_rate": 0.0,
+    "mean_latency_seconds": 15.3,
+    "mean_actual_input_tokens": 17987,
+    "mean_output_tokens": 1586,
+    "mean_output_chars": 2283,
+    "failure_counts": {
+      "draft_length": 1,
+      "incomplete_cocreate_protocol": 2,
+      "strict_xml_protocol": 2
+    }
+  },
+  {
+    "model": "deepseek-yuanyu-0__deepseek-v4-pro",
+    "stage": "initial_cocreate_draft",
+    "target_tokens": 96000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 0,
+    "strict_success_rate": 0.0,
+    "mean_latency_seconds": 20.06,
+    "mean_actual_input_tokens": 100357,
+    "mean_output_tokens": 1605.5,
+    "mean_output_chars": 2223,
+    "failure_counts": {
+      "draft_length": 1,
+      "incomplete_cocreate_protocol": 1,
+      "strict_xml_protocol": 1
+    }
+  },
+  {
+    "model": "deepseek-yuanyu-0__deepseek-v4-pro",
+    "stage": "initial_cocreate_draft",
+    "target_tokens": 160000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 0,
+    "strict_success_rate": 0.0,
+    "mean_latency_seconds": 17.1,
+    "mean_actual_input_tokens": 162997,
+    "mean_output_tokens": 1152,
+    "mean_output_chars": 1638,
+    "failure_counts": {
+      "incomplete_cocreate_protocol": 2,
+      "strict_xml_protocol": 2
+    }
+  },
+  {
+    "model": "deepseek-yuanyu-0__deepseek-v4-pro",
+    "stage": "mid_continuation",
+    "target_tokens": 48000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 0,
+    "strict_success_rate": 0.0,
+    "mean_latency_seconds": 21.94,
+    "mean_actual_input_tokens": 21235,
+    "mean_output_tokens": 2101.5,
+    "mean_output_chars": 3243,
+    "failure_counts": {
+      "prose_length": 2
+    }
+  },
+  {
+    "model": "deepseek-yuanyu-0__deepseek-v4-pro",
+    "stage": "mid_continuation",
+    "target_tokens": 96000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 0,
+    "strict_success_rate": 0.0,
+    "mean_latency_seconds": 30.96,
+    "mean_actual_input_tokens": 41379,
+    "mean_output_tokens": 3320.5,
+    "mean_output_chars": 5160.5,
+    "failure_counts": {
+      "missing_relationship_anchors": 1,
+      "prose_length": 2
+    }
+  },
+  {
+    "model": "deepseek-yuanyu-0__deepseek-v4-pro",
+    "stage": "mid_continuation",
+    "target_tokens": 160000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 1,
+    "strict_success_rate": 0.5,
+    "mean_latency_seconds": 21.1,
+    "mean_actual_input_tokens": 67776,
+    "mean_output_tokens": 1929.5,
+    "mean_output_chars": 3074.5,
+    "failure_counts": {
+      "prose_length": 1
+    }
+  },
+  {
+    "model": "deepseek-yuanyu-0__deepseek-v4-pro",
+    "stage": "opening_draft",
+    "target_tokens": 48000,
+    "attempts": 1,
+    "completed": 1,
+    "strict_successes": 0,
+    "strict_success_rate": 0.0,
+    "mean_latency_seconds": 13.1,
+    "mean_actual_input_tokens": 21397,
+    "mean_output_tokens": 1319,
+    "mean_output_chars": 2082,
+    "failure_counts": {
+      "prose_length": 1
+    }
+  },
+  {
+    "model": "deepseek-yuanyu-0__deepseek-v4-pro",
+    "stage": "opening_draft",
+    "target_tokens": 96000,
+    "attempts": 1,
+    "completed": 1,
+    "strict_successes": 0,
+    "strict_success_rate": 0.0,
+    "mean_latency_seconds": 14.24,
+    "mean_actual_input_tokens": 41319,
+    "mean_output_tokens": 1502,
+    "mean_output_chars": 2405,
+    "failure_counts": {
+      "prose_length": 1
+    }
+  },
+  {
+    "model": "deepseek-yuanyu-0__deepseek-v4-pro",
+    "stage": "opening_draft",
+    "target_tokens": 160000,
+    "attempts": 1,
+    "completed": 1,
+    "strict_successes": 0,
+    "strict_success_rate": 0.0,
+    "mean_latency_seconds": 19.5,
+    "mean_actual_input_tokens": 68558,
+    "mean_output_tokens": 2071,
+    "mean_output_chars": 3209,
+    "failure_counts": {
+      "prose_length": 1
+    }
+  },
+  {
+    "model": "deepseek-yuanyu-0__deepseek-v4-pro",
+    "stage": "skeleton_planning",
+    "target_tokens": 48000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 2,
+    "strict_success_rate": 1.0,
+    "mean_latency_seconds": 16.55,
+    "mean_actual_input_tokens": 51485,
+    "mean_output_tokens": 1324,
+    "mean_output_chars": 2359,
+    "failure_counts": {}
+  },
+  {
+    "model": "deepseek-yuanyu-0__deepseek-v4-pro",
+    "stage": "skeleton_planning",
+    "target_tokens": 96000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 2,
+    "strict_success_rate": 1.0,
+    "mean_latency_seconds": 17.97,
+    "mean_actual_input_tokens": 100249,
+    "mean_output_tokens": 1688,
+    "mean_output_chars": 2669,
+    "failure_counts": {}
+  },
+  {
+    "model": "deepseek-yuanyu-0__deepseek-v4-pro",
+    "stage": "skeleton_planning",
+    "target_tokens": 160000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 1,
+    "strict_success_rate": 0.5,
+    "mean_latency_seconds": 15.41,
+    "mean_actual_input_tokens": 162803,
+    "mean_output_tokens": 1210.5,
+    "mean_output_chars": 2205,
+    "failure_counts": {
+      "chapter_ranges": 1
+    }
+  },
+  {
+    "model": "deepseek-yuanyu-0__deepseek-v4-pro",
+    "stage": "source_analysis",
+    "target_tokens": 12000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 1,
+    "strict_success_rate": 0.5,
+    "mean_latency_seconds": 8.85,
+    "mean_actual_input_tokens": 4857,
+    "mean_output_tokens": 810.5,
+    "mean_output_chars": 1313,
+    "failure_counts": {
+      "too_many_events": 1
+    }
+  },
+  {
+    "model": "deepseek-yuanyu-0__deepseek-v4-pro",
+    "stage": "source_analysis",
+    "target_tokens": 24000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 0,
+    "strict_success_rate": 0.0,
+    "mean_latency_seconds": 8.56,
+    "mean_actual_input_tokens": 10546,
+    "mean_output_tokens": 984.5,
+    "mean_output_chars": 1771.5,
+    "failure_counts": {
+      "too_many_events": 2
+    }
+  },
+  {
+    "model": "deepseek-yuanyu-0__deepseek-v4-pro",
+    "stage": "source_analysis",
+    "target_tokens": 48000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 1,
+    "strict_success_rate": 0.5,
+    "mean_latency_seconds": 27.58,
+    "mean_actual_input_tokens": 19728,
+    "mean_output_tokens": 3391.5,
+    "mean_output_chars": 5495,
+    "failure_counts": {
+      "too_many_events": 1
+    }
+  },
+  {
+    "model": "deepseek-yuanyu-0__deepseek-v4-pro",
+    "stage": "source_analysis",
+    "target_tokens": 72000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 0,
+    "strict_success_rate": 0.0,
+    "mean_latency_seconds": 30.38,
+    "mean_actual_input_tokens": 29071,
+    "mean_output_tokens": 3355,
+    "mean_output_chars": 5965,
+    "failure_counts": {
+      "too_many_events": 2
+    }
+  },
+  {
+    "model": "deepseek-yuanyu-0__deepseek-v4-pro",
+    "stage": "source_analysis",
+    "target_tokens": 96000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 0,
+    "strict_success_rate": 0.0,
+    "mean_latency_seconds": 37.95,
+    "mean_actual_input_tokens": 40113,
+    "mean_output_tokens": 4719.5,
+    "mean_output_chars": 8221,
+    "failure_counts": {
+      "invalid_json": 1,
+      "missing_segment_coverage": 1,
+      "report_count": 1,
+      "report_order": 1,
+      "truncated": 1
+    }
+  },
+  {
+    "model": "grok-oauth__grok-4.5",
+    "stage": "arc_close_edit",
+    "target_tokens": 48000,
+    "attempts": 1,
+    "completed": 1,
+    "strict_successes": 1,
+    "strict_success_rate": 1.0,
+    "mean_latency_seconds": 41.29,
+    "mean_actual_input_tokens": 23115,
+    "mean_output_tokens": 2433,
+    "mean_output_chars": 3154,
+    "failure_counts": {}
+  },
+  {
+    "model": "grok-oauth__grok-4.5",
+    "stage": "arc_close_edit",
+    "target_tokens": 96000,
+    "attempts": 1,
+    "completed": 1,
+    "strict_successes": 0,
+    "strict_success_rate": 0.0,
+    "mean_latency_seconds": 33.52,
+    "mean_actual_input_tokens": 46249,
+    "mean_output_tokens": 2543,
+    "mean_output_chars": 3323,
+    "failure_counts": {
+      "prose_length": 1
+    }
+  },
+  {
+    "model": "grok-oauth__grok-4.5",
+    "stage": "arc_close_edit",
+    "target_tokens": 160000,
+    "attempts": 1,
+    "completed": 1,
+    "strict_successes": 0,
+    "strict_success_rate": 0.0,
+    "mean_latency_seconds": 53.22,
+    "mean_actual_input_tokens": 76502,
+    "mean_output_tokens": 2885,
+    "mean_output_chars": 3698,
+    "failure_counts": {
+      "prose_length": 1
+    }
+  },
+  {
+    "model": "grok-oauth__grok-4.5",
+    "stage": "detail_outline",
+    "target_tokens": 48000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 2,
+    "strict_success_rate": 1.0,
+    "mean_latency_seconds": 38.84,
+    "mean_actual_input_tokens": 23185,
+    "mean_output_tokens": 3940.5,
+    "mean_output_chars": 5556,
+    "failure_counts": {}
+  },
+  {
+    "model": "grok-oauth__grok-4.5",
+    "stage": "detail_outline",
+    "target_tokens": 96000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 2,
+    "strict_success_rate": 1.0,
+    "mean_latency_seconds": 50.27,
+    "mean_actual_input_tokens": 46029,
+    "mean_output_tokens": 3418.5,
+    "mean_output_chars": 4787.5,
+    "failure_counts": {}
+  },
+  {
+    "model": "grok-oauth__grok-4.5",
+    "stage": "detail_outline",
+    "target_tokens": 160000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 2,
+    "strict_success_rate": 1.0,
+    "mean_latency_seconds": 46.65,
+    "mean_actual_input_tokens": 76526,
+    "mean_output_tokens": 3968.5,
+    "mean_output_chars": 5590.5,
+    "failure_counts": {}
+  },
+  {
+    "model": "grok-oauth__grok-4.5",
+    "stage": "initial_cocreate_draft",
+    "target_tokens": 48000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 2,
+    "strict_success_rate": 1.0,
+    "mean_latency_seconds": 19.85,
+    "mean_actual_input_tokens": 19322,
+    "mean_output_tokens": 1469,
+    "mean_output_chars": 1957.5,
+    "failure_counts": {}
+  },
+  {
+    "model": "grok-oauth__grok-4.5",
+    "stage": "initial_cocreate_draft",
+    "target_tokens": 96000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 2,
+    "strict_success_rate": 1.0,
+    "mean_latency_seconds": 23.07,
+    "mean_actual_input_tokens": 109361,
+    "mean_output_tokens": 1403,
+    "mean_output_chars": 1871.5,
+    "failure_counts": {}
+  },
+  {
+    "model": "grok-oauth__grok-4.5",
+    "stage": "initial_cocreate_draft",
+    "target_tokens": 160000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 2,
+    "strict_success_rate": 1.0,
+    "mean_latency_seconds": 34.4,
+    "mean_actual_input_tokens": 177950,
+    "mean_output_tokens": 1625,
+    "mean_output_chars": 2145.5,
+    "failure_counts": {}
+  },
+  {
+    "model": "grok-oauth__grok-4.5",
+    "stage": "mid_continuation",
+    "target_tokens": 48000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 1,
+    "strict_success_rate": 0.5,
+    "mean_latency_seconds": 46.56,
+    "mean_actual_input_tokens": 23340,
+    "mean_output_tokens": 2975.5,
+    "mean_output_chars": 3662,
+    "failure_counts": {
+      "prose_length": 1
+    }
+  },
+  {
+    "model": "grok-oauth__grok-4.5",
+    "stage": "mid_continuation",
+    "target_tokens": 96000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 0,
+    "strict_success_rate": 0.0,
+    "mean_latency_seconds": 49.29,
+    "mean_actual_input_tokens": 46507,
+    "mean_output_tokens": 3028,
+    "mean_output_chars": 3680.5,
+    "failure_counts": {
+      "missing_relationship_anchors": 1,
+      "prose_length": 2
+    }
+  },
+  {
+    "model": "grok-oauth__grok-4.5",
+    "stage": "mid_continuation",
+    "target_tokens": 160000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 0,
+    "strict_success_rate": 0.0,
+    "mean_latency_seconds": 48.45,
+    "mean_actual_input_tokens": 76772,
+    "mean_output_tokens": 2688,
+    "mean_output_chars": 3312,
+    "failure_counts": {
+      "missing_relationship_anchors": 1,
+      "prose_length": 2
+    }
+  },
+  {
+    "model": "grok-oauth__grok-4.5",
+    "stage": "opening_draft",
+    "target_tokens": 48000,
+    "attempts": 1,
+    "completed": 1,
+    "strict_successes": 0,
+    "strict_success_rate": 0.0,
+    "mean_latency_seconds": 24.99,
+    "mean_actual_input_tokens": 23157,
+    "mean_output_tokens": 1176,
+    "mean_output_chars": 1501,
+    "failure_counts": {
+      "prose_length": 1
+    }
+  },
+  {
+    "model": "grok-oauth__grok-4.5",
+    "stage": "opening_draft",
+    "target_tokens": 96000,
+    "attempts": 1,
+    "completed": 1,
+    "strict_successes": 0,
+    "strict_success_rate": 0.0,
+    "mean_latency_seconds": 33.02,
+    "mean_actual_input_tokens": 45459,
+    "mean_output_tokens": 1319,
+    "mean_output_chars": 1691,
+    "failure_counts": {
+      "prose_length": 1
+    }
+  },
+  {
+    "model": "grok-oauth__grok-4.5",
+    "stage": "opening_draft",
+    "target_tokens": 160000,
+    "attempts": 1,
+    "completed": 1,
+    "strict_successes": 0,
+    "strict_success_rate": 0.0,
+    "mean_latency_seconds": 27.4,
+    "mean_actual_input_tokens": 75862,
+    "mean_output_tokens": 1200,
+    "mean_output_chars": 1591,
+    "failure_counts": {
+      "prose_length": 1
+    }
+  },
+  {
+    "model": "grok-oauth__grok-4.5",
+    "stage": "skeleton_planning",
+    "target_tokens": 48000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 2,
+    "strict_success_rate": 1.0,
+    "mean_latency_seconds": 26.22,
+    "mean_actual_input_tokens": 56166,
+    "mean_output_tokens": 2103.5,
+    "mean_output_chars": 2907.5,
+    "failure_counts": {}
+  },
+  {
+    "model": "grok-oauth__grok-4.5",
+    "stage": "skeleton_planning",
+    "target_tokens": 96000,
+    "attempts": 2,
+    "completed": 1,
+    "strict_successes": 1,
+    "strict_success_rate": 0.5,
+    "mean_latency_seconds": 37.98,
+    "mean_actual_input_tokens": 109371,
+    "mean_output_tokens": 2762,
+    "mean_output_chars": 3790,
+    "failure_counts": {
+      "started": 1
+    }
+  },
+  {
+    "model": "grok-oauth__grok-4.5",
+    "stage": "skeleton_planning",
+    "target_tokens": 160000,
+    "attempts": 2,
+    "completed": 1,
+    "strict_successes": 1,
+    "strict_success_rate": 0.5,
+    "mean_latency_seconds": 37.4,
+    "mean_actual_input_tokens": 177871,
+    "mean_output_tokens": 1568,
+    "mean_output_chars": 2197,
+    "failure_counts": {
+      "started": 1
+    }
+  },
+  {
+    "model": "grok-oauth__grok-4.5",
+    "stage": "source_analysis",
+    "target_tokens": 12000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 2,
+    "strict_success_rate": 1.0,
+    "mean_latency_seconds": 17.69,
+    "mean_actual_input_tokens": 5396,
+    "mean_output_tokens": 993.5,
+    "mean_output_chars": 1310.5,
+    "failure_counts": {}
+  },
+  {
+    "model": "grok-oauth__grok-4.5",
+    "stage": "source_analysis",
+    "target_tokens": 24000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 2,
+    "strict_success_rate": 1.0,
+    "mean_latency_seconds": 12.56,
+    "mean_actual_input_tokens": 11831,
+    "mean_output_tokens": 1673.5,
+    "mean_output_chars": 2189.5,
+    "failure_counts": {}
+  },
+  {
+    "model": "grok-oauth__grok-4.5",
+    "stage": "source_analysis",
+    "target_tokens": 48000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 2,
+    "strict_success_rate": 1.0,
+    "mean_latency_seconds": 24.23,
+    "mean_actual_input_tokens": 22411,
+    "mean_output_tokens": 2244,
+    "mean_output_chars": 3312,
+    "failure_counts": {}
+  },
+  {
+    "model": "grok-oauth__grok-4.5",
+    "stage": "source_analysis",
+    "target_tokens": 72000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 2,
+    "strict_success_rate": 1.0,
+    "mean_latency_seconds": 34.35,
+    "mean_actual_input_tokens": 33108,
+    "mean_output_tokens": 3048.5,
+    "mean_output_chars": 4621,
+    "failure_counts": {}
+  },
+  {
+    "model": "grok-oauth__grok-4.5",
+    "stage": "source_analysis",
+    "target_tokens": 96000,
+    "attempts": 2,
+    "completed": 2,
+    "strict_successes": 1,
+    "strict_success_rate": 0.5,
+    "mean_latency_seconds": 39.31,
+    "mean_actual_input_tokens": 45609,
+    "mean_output_tokens": 3854,
+    "mean_output_chars": 6012.5,
+    "failure_counts": {
+      "too_many_events": 1
+    }
+  }
+]

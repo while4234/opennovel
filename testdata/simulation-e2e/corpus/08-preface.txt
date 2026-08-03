@@ -1,0 +1,3 @@
+FIXTURE_ID=preface
+Fixture announcement: these synthetic files exercise offline regression tests.
+This is metadata, not story body evidence.
