@@ -252,3 +252,85 @@
   .character-workspace-skeleton { animation: none; }
   .character-list-card, .character-group-toggle { scroll-behavior: auto; transition: none; }
 }
+
+@media (max-width: 767px) {
+  .foundation-center {
+    gap: 8px;
+    padding: 6px 2px 0;
+  }
+
+  .foundation-header,
+  .foundation-section-head {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .foundation-header h1,
+  .foundation-section-head h2 {
+    font-size: 18px;
+  }
+
+  .foundation-header p,
+  .foundation-section-head p {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .foundation-state-strip {
+    flex-wrap: nowrap;
+    min-height: 42px;
+    padding: 7px 9px;
+    overflow-x: auto;
+  }
+
+  .foundation-tabs {
+    min-height: 44px;
+    margin-inline: -2px;
+    padding: 0 2px 4px;
+    scrollbar-width: none;
+  }
+
+  .foundation-tabs::-webkit-scrollbar { display: none; }
+
+  .foundation-tabs button {
+    min-height: 42px;
+    padding: 8px 11px;
+  }
+
+  .foundation-panel {
+    padding: 2px 2px 16px;
+    scrollbar-gutter: auto;
+  }
+
+  .foundation-actions,
+  .foundation-apply-bar {
+    position: sticky;
+    z-index: 5;
+    bottom: 0;
+    gap: 8px;
+    margin-inline: -2px;
+    padding: 10px 2px 0;
+    background: var(--surface-solid);
+  }
+
+  .foundation-dialog-backdrop {
+    z-index: 140;
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .foundation-dialog {
+    max-height: 86dvh;
+    max-width: none;
+    border-radius: 14px 14px 0 0;
+    padding: 18px 16px max(18px, env(safe-area-inset-bottom));
+    overflow-y: auto;
+  }
+
+  .foundation-graph-filters,
+  .foundation-graph-toolbar,
+  .foundation-graph-legend {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

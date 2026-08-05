@@ -2,8 +2,31 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const css = readFileSync(new URL('./styles.css', import.meta.url), 'utf8');
+const mobileChromeCss = readFileSync(new URL('./components/MobileWorkspaceChrome.css', import.meta.url), 'utf8');
+const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
 describe('ui styles', () => {
+  it('uses a phone-only safe-area shell without changing the tablet drawer breakpoint', () => {
+    expect(indexHtml).toContain('viewport-fit=cover');
+    expect(css).toMatch(/@media \(max-width:\s*767px\)[\s\S]*?grid-template-rows:[\s\S]*?env\(safe-area-inset-top\)[\s\S]*?env\(safe-area-inset-bottom\)/);
+    expect(css).toMatch(/@media \(max-width:\s*1100px\)[\s\S]*?\.mobile-workspace-nav\s*{/);
+    expect(mobileChromeCss).toMatch(/@media \(max-width:\s*767px\)/);
+  });
+
+  it('keeps the phone composer and navigation reachable with touch-sized controls', () => {
+    expect(css).toMatch(/@media \(max-width:\s*767px\)[\s\S]*?\.composer\s*{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto;/);
+    expect(css).toMatch(/\.icon-button,[\s\S]*?\.tool-button,[\s\S]*?min-height:\s*44px;/);
+    expect(mobileChromeCss).toMatch(/\.mobile-phone-bottom-nav button\s*{[^}]*min-height:\s*50px;/s);
+    expect(mobileChromeCss).toMatch(/padding:\s*5px 12px max\(5px,\s*env\(safe-area-inset-bottom\)\)/);
+  });
+
+  it('uses one phone workbench scroll surface and full-screen tool details', () => {
+    expect(css).toMatch(/@media \(max-width:\s*767px\)[\s\S]*?\.workbench-stack\s*{[^}]*overflow-y:\s*auto;/);
+    expect(css).toMatch(/\.stream-area\s*{[^}]*overflow:\s*visible;/s);
+    expect(css).toMatch(/\.status-pane\s*{[^}]*width:\s*100%;/s);
+    expect(css).toMatch(/\.status-pane\[data-mobile-view="detail"\][\s\S]*?grid-template-rows:\s*auto\s+minmax\(0,\s*1fr\);/);
+  });
+
   it('keeps disabled library rows opaque during analysis', () => {
     expect(css).toMatch(/\.library-row\s*{[^}]*display:\s*grid;/s);
     expect(css).toMatch(/\.library-row:disabled\s*{[^}]*opacity:\s*1;/s);

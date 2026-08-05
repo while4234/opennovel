@@ -33,6 +33,8 @@
   --focus: 0 0 0 3px rgba(15, 111, 109, 0.16);
   --radius: 8px;
   --radius-sm: 6px;
+  --mobile-topbar-height: 56px;
+  --mobile-bottom-nav-height: 60px;
 }
 
 * {
@@ -5364,5 +5366,247 @@ h2 {
   .foundation-review-choice.revise .foundation-review-feedback textarea {
     height: auto;
     min-height: 54px;
+  }
+}
+
+@media (max-width: 767px) {
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows:
+      calc(var(--mobile-topbar-height) + env(safe-area-inset-top))
+      minmax(0, 1fr)
+      calc(var(--mobile-bottom-nav-height) + env(safe-area-inset-bottom));
+    height: 100svh;
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+
+  .mobile-workspace-nav {
+    display: none;
+  }
+
+  .mobile-drawer-backdrop {
+    z-index: 90;
+    inset: 0;
+  }
+
+  .project-pane,
+  .status-pane {
+    z-index: 100;
+    top: 0;
+    bottom: 0;
+    max-height: 100dvh;
+  }
+
+  .project-pane {
+    width: min(88vw, 360px);
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .project-pane .pane-header {
+    padding-top: 14px;
+  }
+
+  .project-more-button {
+    opacity: 1;
+  }
+
+  .status-pane {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .status-pane .side-tabs,
+  .status-pane .tablet-drawer-close {
+    display: none;
+  }
+
+  .status-pane[data-mobile-view="menu"] .side-panel,
+  .status-pane[data-mobile-view="menu"] .mobile-tool-detail-header {
+    display: none;
+  }
+
+  .status-pane[data-mobile-view="detail"] {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .status-pane[data-mobile-view="detail"] .mobile-tool-menu {
+    display: none;
+  }
+
+  .status-pane[data-mobile-view="detail"] .side-panel {
+    display: block;
+  }
+
+  .writing-pane {
+    grid-column: 1;
+    grid-row: 2;
+    gap: 8px;
+    min-width: 0;
+    padding: 10px;
+    overflow: hidden;
+  }
+
+  .workspace-toolbar {
+    display: none;
+  }
+
+  .project-open-status,
+  .error-banner {
+    flex: 0 0 auto;
+  }
+
+  .workflow-progress {
+    flex: 0 0 auto;
+    max-height: min(34dvh, 300px);
+    padding: 10px;
+    overflow-y: auto;
+  }
+
+  .workflow-step-list {
+    display: flex;
+    gap: 6px;
+    padding-bottom: 2px;
+    overflow-x: auto;
+  }
+
+  .workflow-step {
+    min-width: 150px;
+  }
+
+  .workflow-progress-detail {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workbench-stack {
+    display: block;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding-right: 1px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: auto;
+  }
+
+  .stream-area {
+    min-height: min(46dvh, 410px);
+    overflow: visible;
+    padding: 11px;
+  }
+
+  .stream-round,
+  .stream-round pre {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .event-feed {
+    display: block;
+    margin-top: 8px;
+    overflow: visible;
+  }
+
+  .event-feed > summary {
+    min-height: 44px;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .event-feed > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .event-feed > summary small {
+    margin-left: auto;
+    border-radius: 999px;
+    padding: 2px 7px;
+    background: var(--surface-subtle);
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  .event-list {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .composer {
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 54px;
+    padding: 7px;
+  }
+
+  .composer input,
+  .composer .tool-button {
+    height: 42px;
+    min-height: 42px;
+  }
+
+  .composer .tool-button {
+    width: auto;
+    padding-inline: 14px;
+  }
+
+  input,
+  select,
+  textarea,
+  .composer input,
+  .compact-dialog input {
+    font-size: 16px;
+  }
+
+  .icon-button,
+  .tool-button,
+  .project-more-button,
+  .trash-toggle {
+    min-height: 44px;
+  }
+
+  .side-content {
+    padding: 12px 12px max(16px, env(safe-area-inset-bottom));
+    scrollbar-gutter: auto;
+  }
+
+  .dialog-backdrop {
+    z-index: 130;
+    align-items: end;
+    padding: 0;
+    background: rgba(15, 23, 42, .42);
+  }
+
+  .compact-dialog {
+    width: 100%;
+    max-height: min(86dvh, 760px);
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 14px 14px 0 0;
+    padding: 18px 16px max(18px, env(safe-area-inset-bottom));
+    overflow-y: auto;
+  }
+
+  .dialog-actions {
+    position: sticky;
+    bottom: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-top: 8px;
+    background: var(--surface-solid);
+  }
+
+  .usage-detail-scroll,
+  .table-scroll {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+  }
+}
+
+@media (max-width: 767px) and (orientation: landscape) {
+  .compact-dialog,
+  .mobile-action-sheet {
+    max-height: 92dvh;
   }
 }

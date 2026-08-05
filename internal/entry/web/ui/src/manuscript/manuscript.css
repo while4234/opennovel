@@ -692,3 +692,91 @@
   .expansion-preview dl, .manuscript-revision-controls { grid-template-columns: 1fr; }
   .manuscript-instruction { grid-column: auto; }
 }
+
+@media (max-width: 767px) {
+  .manuscript-workspace-shell {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .manuscript-reader-toolbar {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    padding: 10px 8px;
+  }
+
+  .manuscript-reader-toolbar h2 {
+    font-size: 17px;
+  }
+
+  .manuscript-reader-meta,
+  .manuscript-reader-actions {
+    width: 100%;
+    flex-wrap: nowrap;
+    padding-bottom: 2px;
+    overflow-x: auto;
+  }
+
+  .manuscript-reader-actions > *,
+  .manuscript-reader-meta > * {
+    flex: 0 0 auto;
+  }
+
+  .manuscript-content-scroll {
+    scrollbar-gutter: auto;
+  }
+
+  .manuscript-reading-surface {
+    padding: 18px 12px 40px;
+  }
+
+  .manuscript-prose p {
+    font-size: 16px;
+    line-height: 1.85;
+  }
+
+  .manuscript-artifact-card,
+  .manuscript-reading-surface [aria-label="签名审核结果"],
+  .manuscript-compare > section {
+    padding: 14px 12px;
+  }
+
+  .manuscript-window-status {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .manuscript-tree-drawer.open {
+    z-index: 150;
+    inset:
+      calc(var(--mobile-topbar-height) + env(safe-area-inset-top))
+      0
+      calc(var(--mobile-bottom-nav-height) + env(safe-area-inset-bottom));
+    padding: 10px 12px;
+  }
+
+  .manuscript-tree-close {
+    min-height: 44px;
+  }
+
+  .manuscript-controls {
+    padding: 10px 12px max(16px, env(safe-area-inset-bottom));
+    scrollbar-gutter: auto;
+  }
+
+  .manuscript-chapter-navigation,
+  .manuscript-window-navigation,
+  .manuscript-manual-toolbar,
+  .manuscript-manual-toolbar > div:last-child {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .manuscript-manual-workspace,
+  .manuscript-manual-workspace textarea {
+    min-height: calc(100dvh - 250px);
+  }
+}

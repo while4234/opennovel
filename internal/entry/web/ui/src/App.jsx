@@ -32,6 +32,12 @@ import {
   X
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  MobileToolDetailHeader,
+  MobileToolMenu,
+  MobileWorkspaceChrome,
+  mobileToolLabel
+} from './components/MobileWorkspaceChrome.jsx';
 import { shouldShowWorkflowProgressPanel, WorkflowProgressPanel } from './workflow-progress.jsx';
 import { ManuscriptWorkspace } from './manuscript/ManuscriptWorkspace.jsx';
 import {
@@ -861,6 +867,7 @@ export default function App() {
   const [deleteDialog, setDeleteDialog] = useState(null);
   const [rollbackDialog, setRollbackDialog] = useState(null);
   const [composerText, setComposerText] = useState('');
+  const [eventsOpen, setEventsOpen] = useState(true);
   const [steerText, setSteerText] = useState('');
   const [sideView, setSideView] = useState('status');
   const [centerView, setCenterView] = useState('writing');
@@ -872,6 +879,8 @@ export default function App() {
   const [manuscriptControlsTarget, setManuscriptControlsTarget] = useState(null);
   const [projectDrawerOpen, setProjectDrawerOpen] = useState(false);
   const [toolDrawerOpen, setToolDrawerOpen] = useState(false);
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
+  const [mobileToolView, setMobileToolView] = useState('menu');
   const [simulation, setSimulation] = useState(createSimulationState);
   const [adaptation, setAdaptation] = useState(createAdaptationState);
   const [adaptationAudit, setAdaptationAudit] = useState(createAdaptationAuditState);
@@ -902,6 +911,7 @@ export default function App() {
 	const planningRevisionInFlightProjectRef = useRef('');
   const outlineRevisionHydrationRef = useRef('');
   const forceFoundationProjectOpenRef = useRef('');
+  const mobileOverlayTriggerRef = useRef(null);
 
   const snapshot = workbench.snapshot;
   const currentProjectNextAction = useMemo(() => projectNextAction(snapshot), [snapshot]);
@@ -1644,6 +1654,7 @@ export default function App() {
         setCenterView('writing');
         setSideView('cocreate');
         setFoundationReviewTab(nextAction.tab || 'characters');
+        setMobileToolView('detail');
         setToolDrawerOpen(true);
       }
 
@@ -4484,12 +4495,85 @@ export default function App() {
   const openTool = (view) => {
     setSideView(view);
     if (view === 'manuscript') setCenterView('manuscript');
+    setMobileToolView('detail');
     setToolDrawerOpen(true);
   };
+  const openFoundationCenter = () => {
+    setFoundationNavigation({ projectId: '', tab: '', anchor: '', requestId: 0 });
+    setCenterView('foundation');
+    setProjectDrawerOpen(false);
+    setToolDrawerOpen(false);
+    setMobileActionsOpen(false);
+  };
+  const resumeFromCurrentState = () => {
+    if (currentProjectNextAction?.code === 'confirm_character_candidate') {
+      openFoundationCharacterConfirmation();
+      return;
+    }
+    if (continuationNeedsReview(continuationSnapshot) ||
+      (continuationSnapshot.exists && !continuationCanResume(continuationSnapshot))) {
+      openTool('continuation');
+      return;
+    }
+    runAction(resumeProject, { reportResumeNoOp: true });
+  };
+  const openMobileProjects = () => {
+    mobileOverlayTriggerRef.current = globalThis.document?.activeElement || null;
+    setMobileActionsOpen(false);
+    setToolDrawerOpen(false);
+    setProjectDrawerOpen(true);
+  };
+  const openMobileActions = () => {
+    setProjectDrawerOpen(false);
+    setToolDrawerOpen(false);
+    setMobileActionsOpen((open) => !open);
+  };
+  const selectMobileWriting = () => {
+    setCenterView('writing');
+    if (sideView === 'manuscript') setSideView('status');
+    setProjectDrawerOpen(false);
+    setToolDrawerOpen(false);
+    setMobileActionsOpen(false);
+  };
+  const selectMobileManuscript = () => {
+    setCenterView('manuscript');
+    setSideView('manuscript');
+    setProjectDrawerOpen(false);
+    setToolDrawerOpen(false);
+    setMobileActionsOpen(false);
+  };
+  const openMobileToolMenu = () => {
+    mobileOverlayTriggerRef.current = globalThis.document?.activeElement || null;
+    setProjectDrawerOpen(false);
+    setMobileActionsOpen(false);
+    setMobileToolView('menu');
+    setToolDrawerOpen(true);
+  };
+  const openMobileToolDetail = (view) => {
+    setMobileActionsOpen(false);
+    setProjectDrawerOpen(false);
+    openTool(view);
+  };
+  const closeMobileDrawers = () => {
+    setProjectDrawerOpen(false);
+    setToolDrawerOpen(false);
+    globalThis.requestAnimationFrame?.(() => mobileOverlayTriggerRef.current?.focus?.());
+  };
+  useEffect(() => {
+    if (!projectDrawerOpen && !toolDrawerOpen) return undefined;
+    const closeOnEscape = (event) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      event.preventDefault();
+      closeMobileDrawers();
+    };
+    globalThis.document?.addEventListener('keydown', closeOnEscape);
+    return () => globalThis.document?.removeEventListener('keydown', closeOnEscape);
+  }, [projectDrawerOpen, toolDrawerOpen]);
   const openFoundationReviewTab = (tab = 'overview') => {
     setCenterView('writing');
     setSideView('cocreate');
     setFoundationReviewTab(tab);
+    setMobileToolView('detail');
     setToolDrawerOpen(true);
     globalThis.requestAnimationFrame?.(() => {
       globalThis.document?.getElementById(`foundation-review-tab-${tab}`)?.scrollIntoView({
@@ -4703,13 +4787,93 @@ export default function App() {
 
   return (
     <div className={`app-shell ${centerView === 'foundation' ? 'foundation-focus' : ''}`}>
+      <MobileWorkspaceChrome
+        actionsOpen={mobileActionsOpen}
+        connection={connection}
+        currentView={toolDrawerOpen ? 'tools' : centerView}
+        projectName={activeProject?.name || projectOpen.project?.name || ''}
+        onCloseActions={() => setMobileActionsOpen(false)}
+        onOpenActions={openMobileActions}
+        onOpenProjects={openMobileProjects}
+        onOpenTools={openMobileToolMenu}
+        onSelectManuscript={selectMobileManuscript}
+        onSelectWriting={selectMobileWriting}
+        actions={(
+          <>
+            <button className="tool-button" disabled={!activeProject || projectOpen.status === 'loading'} onClick={openFoundationCenter} type="button">
+              <Database size={17} />
+              设定中心
+            </button>
+            {centerView === 'manuscript' ? (
+              <button className="tool-button" disabled={!activeProject} onClick={() => openMobileToolDetail('manuscript')} type="button">
+                <BookOpen size={17} />
+                稿件控制
+              </button>
+            ) : null}
+            <button
+              className="tool-button"
+              disabled={!activeProject || projectBusy}
+              onClick={() => {
+                setMobileActionsOpen(false);
+                openProject(activeProject);
+              }}
+              type="button"
+            >
+              <ListRestart size={17} />
+              保存快照
+            </button>
+            <button
+              className="tool-button"
+              disabled={!activeProject || !projectRunning}
+              onClick={() => {
+                setMobileActionsOpen(false);
+                pauseWriting();
+              }}
+              type="button"
+            >
+              <PauseCircle size={17} />
+              暂停
+            </button>
+            <button
+              className="tool-button accent"
+              disabled={!activeProject || projectBusy}
+              onClick={() => {
+                setMobileActionsOpen(false);
+                resumeFromCurrentState();
+              }}
+              type="button"
+            >
+              <Play size={17} />
+              恢复
+            </button>
+            <button
+              className="tool-button danger-ghost"
+              disabled={!activeProject || projectBusy}
+              onClick={() => {
+                setMobileActionsOpen(false);
+                openRollbackDialog();
+              }}
+              type="button"
+            >
+              <RotateCcw size={17} />
+              回退
+            </button>
+          </>
+        )}
+      />
       <nav className="mobile-workspace-nav" aria-label="移动端工作台导航">
-        <button aria-expanded={projectDrawerOpen} onClick={() => setProjectDrawerOpen((open) => !open)} type="button">
+        <button aria-expanded={projectDrawerOpen} onClick={() => {
+          setToolDrawerOpen(false);
+          setProjectDrawerOpen((open) => !open);
+        }} type="button">
           <BookOpen size={17} />
           项目
         </button>
         <strong>{activeProject?.name || '小说工作台'}</strong>
-        <button aria-expanded={toolDrawerOpen} onClick={() => setToolDrawerOpen((open) => !open)} type="button">
+        <button aria-expanded={toolDrawerOpen} onClick={() => {
+          setProjectDrawerOpen(false);
+          setToolDrawerOpen((open) => !open);
+        }} type="button">
           <SlidersHorizontal size={17} />
           工具
         </button>
@@ -4718,10 +4882,7 @@ export default function App() {
         <button
           aria-label="关闭侧栏"
           className="mobile-drawer-backdrop"
-          onClick={() => {
-            setProjectDrawerOpen(false);
-            setToolDrawerOpen(false);
-          }}
+          onClick={closeMobileDrawers}
           type="button"
         />
       ) : null}
@@ -4995,11 +5156,7 @@ export default function App() {
               aria-pressed={centerView === 'foundation'}
               className={`tool-button ${centerView === 'foundation' ? 'accent' : ''}`}
               disabled={!activeProject || projectOpen.status === 'loading'}
-              onClick={() => {
-                setFoundationNavigation({ projectId: '', tab: '', anchor: '', requestId: 0 });
-                setCenterView('foundation');
-                setToolDrawerOpen(false);
-              }}
+              onClick={openFoundationCenter}
               type="button"
             >
               <Database size={16} />
@@ -5026,21 +5183,7 @@ export default function App() {
             <button
               className="tool-button accent"
               disabled={!activeProject || projectBusy}
-              onClick={() => {
-                if (currentProjectNextAction?.code === 'confirm_character_candidate') {
-                  openFoundationCharacterConfirmation();
-                  return;
-                }
-                if (continuationNeedsReview(continuationSnapshot)) {
-                  setSideView('continuation');
-                  return;
-                }
-                if (continuationSnapshot.exists && !continuationCanResume(continuationSnapshot)) {
-                  setSideView('continuation');
-                  return;
-                }
-                runAction(resumeProject, { reportResumeNoOp: true });
-              }}
+              onClick={resumeFromCurrentState}
               type="button"
             >
               <Play size={16} />
@@ -5177,11 +5320,12 @@ export default function App() {
             )}
           </section>
 
-          <section className="event-feed" aria-label="运行事件">
-            <div className="section-title">
+          <details className="event-feed" open={eventsOpen} onToggle={(event) => setEventsOpen(event.currentTarget.open)}>
+            <summary className="section-title">
               <Activity size={17} />
               <span>事件</span>
-            </div>
+              <small>{sortedEvents.length}</small>
+            </summary>
             <div className="event-list">
               {sortedEvents.length === 0 ? (
                 <div className="empty-state">暂无事件</div>
@@ -5196,7 +5340,7 @@ export default function App() {
                 ))
               )}
             </div>
-          </section>
+          </details>
         </div>
 
         <form className="composer" onSubmit={submitContinue}>
@@ -5214,7 +5358,12 @@ export default function App() {
         </form></> : null}
       </main>
 
-      <aside className={`status-pane ${sideView === 'manuscript' ? 'manuscript-active' : ''} ${toolDrawerOpen ? 'mobile-open' : ''}`} aria-label="创作与高级工具">
+      <aside
+        className={`status-pane ${sideView === 'manuscript' ? 'manuscript-active' : ''} ${toolDrawerOpen ? 'mobile-open' : ''}`}
+        data-mobile-view={mobileToolView}
+        aria-label="创作与高级工具"
+      >
+        <MobileToolMenu coCreateVisible={globalCoCreateVisible} onClose={closeMobileDrawers} onSelectTool={openMobileToolDetail} />
         <div className="side-tabs" role="tablist" aria-label="工作台工具">
           <button aria-selected={sideView === 'status'} className={sideView === 'status' ? 'active' : ''} onClick={() => openTool('status')} role="tab" title="状态" type="button">
             <CircleDot size={16} />
@@ -5274,8 +5423,13 @@ export default function App() {
           </button>
         </div>
 
+        <MobileToolDetailHeader
+          title={mobileToolLabel(sideView)}
+          onBack={() => setMobileToolView('menu')}
+          onClose={closeMobileDrawers}
+        />
         <div className="side-panel" role="tabpanel">
-          <button className="mobile-drawer-close" onClick={() => setToolDrawerOpen(false)} type="button">
+          <button className="mobile-drawer-close tablet-drawer-close" onClick={() => setToolDrawerOpen(false)} type="button">
             <X size={16} /> 关闭工具
           </button>
           {sideView === 'manuscript' ? (
