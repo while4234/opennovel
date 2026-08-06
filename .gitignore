@@ -71,3 +71,5 @@ refer/
 /novel/
 output*
 workspace/
+!internal/entry/web/ui/src/workspace/
+!internal/entry/web/ui/src/workspace/**

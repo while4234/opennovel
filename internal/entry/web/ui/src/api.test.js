@@ -3,6 +3,8 @@ import {
   addGlobalProviderModel,
   analyzeAdaptationSource,
   analyzeSimulation,
+  importExternalNovel,
+  importSimulationProfile,
   buildAdaptationProposal,
   cancelSemanticAdaptationAudit,
   clearProjectTrash,
@@ -32,6 +34,7 @@ import {
   getSummarySnapshot,
   getCodexAuthStatus,
   getGlobalModels,
+  getGlobalPrompts,
   getContinuation,
   getProjectEvents,
   inheritGlobalModel,
@@ -62,6 +65,7 @@ import {
   resolveCoCreateDecision,
   resolveCoCreateDecisions,
   rollbackProject,
+  resetGlobalPrompt,
   saveNovelToLibrary,
   searchSimulationSources,
   sendCoCreate,
@@ -84,8 +88,12 @@ import {
   testGlobalProviderModel,
   testProjectProviderModel,
   trashProject,
+  updateGlobalPrompt,
   uploadCodexAuthFile,
-  uploadContinuationSource
+  uploadContinuationSource,
+  uploadAdaptationSource,
+  uploadSimulationFiles,
+  uploadSimulationLibrary
 } from './api.js';
 
 function mockJSONResponse(body = {}) {
@@ -102,7 +110,9 @@ function mockBlobResponse(body = 'book') {
       'x-ainovel-export-name': 'book.txt',
       'x-ainovel-export-chapters': '59',
       'x-ainovel-export-bytes': '893100',
-      'x-ainovel-export-skipped': '2,4'
+      'x-ainovel-export-skipped': '2,4',
+      'x-ainovel-audit-status': 'pass',
+      'x-ainovel-audit-digest': 'audit-digest'
     }),
     blob: () => Promise.resolve(new Blob([body], { type: 'text/plain' }))
   };
@@ -376,7 +386,9 @@ describe('web API helpers', () => {
       name: 'book.txt',
       chapters: 59,
       bytes: 893100,
-      skipped: [2, 4]
+      skipped: [2, 4],
+      audit_status: 'pass',
+      audit_digest: 'audit-digest'
     });
     expect(await result.blob.text()).toBe('novel body');
   });
@@ -522,6 +534,103 @@ describe('web API helpers', () => {
     expect(options.body.get('files')).toBe(file);
     expect(options.body.has('from')).toBe(false);
     expect(options.body.has('resume_from')).toBe(false);
+  });
+
+  it('uses the fixed global prompt collection and family resources', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockJSONResponse({ prompts: [] }));
+
+    await getGlobalPrompts();
+    await updateGlobalPrompt('gpt/family', 'custom prompt');
+    await resetGlobalPrompt('kimi family');
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/models/global-prompts', expect.objectContaining({ headers: {} }));
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/models/global-prompts/gpt%2Ffamily', expect.objectContaining({
+      method: 'PUT',
+      body: JSON.stringify({ content: 'custom prompt' })
+    }));
+    expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/models/global-prompts/kimi%20family', expect.objectContaining({ method: 'DELETE' }));
+  });
+
+  it.each([
+    {
+      name: 'simulation source files',
+      path: '/api/projects/project-1/simulate/files',
+      upload: (files) => uploadSimulationFiles('project-1', files),
+      expected: [['files', 'first.txt'], ['files', 'second.txt']]
+    },
+    {
+      name: 'simulation profile',
+      path: '/api/projects/project-1/simulate/import',
+      upload: ([file]) => importSimulationProfile('project-1', file),
+      expected: [['profile', 'first.txt']]
+    },
+    {
+      name: 'simulation library files',
+      path: '/api/libraries/simulation/upload',
+      upload: (files) => uploadSimulationLibrary(files),
+      expected: [['files', 'first.txt'], ['files', 'second.txt']]
+    },
+    {
+      name: 'external novel with source provenance',
+      path: '/api/projects/project-1/import',
+      upload: ([file]) => importExternalNovel('project-1', file, 'local-library'),
+      expected: [['source', 'first.txt'], ['from', 'local-library']]
+    },
+    {
+      name: 'adaptation source',
+      path: '/api/projects/project-1/adapt/source',
+      upload: ([file]) => uploadAdaptationSource('project-1', file),
+      expected: [['source', 'first.txt']]
+    }
+  ])('preserves multipart field names for $name', async ({ path, upload, expected }) => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockJSONResponse({ ok: true }));
+    const files = [
+      new File(['first'], 'first.txt', { type: 'text/plain' }),
+      new File(['second'], 'second.txt', { type: 'text/plain' })
+    ];
+
+    await upload(files);
+
+    const [actualPath, options] = fetchMock.mock.calls[0];
+    const entries = [...options.body.entries()].map(([field, value]) => [field, value instanceof File ? value.name : value]);
+    expect(actualPath).toBe(path);
+    expect(options.method).toBe('POST');
+    expect(options.headers).toEqual({});
+    expect(entries).toEqual(expected);
+  });
+
+  it('submits persistent actions once and polls by action id until completion', async () => {
+    vi.spyOn(globalThis, 'setTimeout').mockImplementation((callback) => {
+      callback();
+      return 1;
+    });
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(mockJSONResponse({ action_id: 'action/one' }))
+      .mockResolvedValueOnce(mockJSONResponse({ action: { status: 'running' } }))
+      .mockResolvedValueOnce(mockJSONResponse({ action: { status: 'completed' } }))
+      .mockResolvedValueOnce(mockJSONResponse({ continuation: { stage: 'proposal_review' } }));
+
+    const result = await generateContinuationProposal('project-1', {
+      expected_revision: 2,
+      idempotency_key: 'proposal-generation'
+    });
+
+    expect(fetchMock.mock.calls.map(([path]) => path)).toEqual([
+      '/api/projects/project-1/continuation/proposal/generate',
+      '/api/projects/project-1/continuation/proposal/generate?action_id=action%2Fone',
+      '/api/projects/project-1/continuation/proposal/generate?action_id=action%2Fone',
+      '/api/projects/project-1/continuation'
+    ]);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      expected_revision: 2,
+      idempotency_key: 'proposal-generation',
+      async: true
+    });
+    expect(result).toMatchObject({
+      continuation: { stage: 'proposal_review' },
+      action_id: 'action/one',
+      action: { status: 'completed' }
+    });
   });
 
   it('uses explicit continuation generation and retry routes', async () => {

@@ -1,0 +1,353 @@
+.project-workspace-header {
+  display: grid;
+  flex: 0 0 auto;
+  min-width: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-solid);
+}
+
+.project-workspace-topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  min-height: 58px;
+  padding: 8px 16px;
+}
+
+.project-workspace-status,
+.project-workspace-status .toolbar-actions,
+.project-action-rail-switches {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.project-workspace-connection {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: var(--muted-soft);
+}
+
+.project-workspace-connection[data-status='live'],
+.project-workspace-connection[data-status='connected'] {
+  background: var(--success);
+}
+
+.project-workspace-connection[data-status='reconnecting'],
+.project-workspace-connection[data-status='degraded'],
+.project-workspace-connection[data-status='connecting'] {
+  background: var(--warn);
+}
+
+.project-workspace-connection[data-status='offline'],
+.project-workspace-connection[data-status='disconnected'],
+.project-workspace-connection[data-status='error'] {
+  background: var(--danger);
+}
+
+.project-section-navigation {
+  display: flex;
+  min-width: 0;
+  min-height: 40px;
+  align-items: stretch;
+  gap: 2px;
+  padding: 0 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.project-section-navigation a {
+  display: inline-flex;
+  min-width: max-content;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.project-section-navigation a:hover {
+  background: var(--surface-subtle);
+  color: var(--text);
+}
+
+.project-section-navigation a.active {
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+}
+
+.project-action-rail-header {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-solid);
+}
+
+.project-action-rail-header > div:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.project-action-rail-header span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.project-action-rail-header strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-action-rail-switches button {
+  min-height: 34px;
+  padding: 0 9px;
+}
+
+.compatibility-workspace .app-shell {
+  grid-template-columns: minmax(520px, 1fr) minmax(360px, 380px);
+  grid-template-rows: auto minmax(0, 1fr);
+  --radius: 6px;
+}
+
+.compatibility-workspace .writing-pane {
+  grid-column: 1;
+  grid-row: 2;
+  padding: 14px 16px 12px;
+  background: #fbfbfb;
+}
+
+.compatibility-workspace .project-workspace-header {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.compatibility-workspace .status-pane {
+  grid-column: 2;
+  grid-row: 2;
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  background: var(--surface-solid);
+}
+
+@media (min-width: 1101px) {
+  .compatibility-workspace .app-shell.foundation-focus {
+    grid-template-columns: minmax(520px, 1fr) minmax(360px, 380px);
+  }
+
+  .compatibility-workspace .app-shell.foundation-focus .status-pane {
+    display: grid;
+  }
+}
+
+.compatibility-workspace .side-tabs {
+  display: none;
+}
+
+.compatibility-workspace .side-panel {
+  min-height: 0;
+}
+
+@media (min-width: 1101px) {
+  .compatibility-workspace .app-shell:is(
+    [data-workspace-section='simulation'],
+    [data-workspace-section='adaptation'],
+    [data-workspace-section='continuation'],
+    [data-workspace-section='audit'],
+    [data-workspace-section='export'],
+    [data-workspace-section='diagnostics'],
+    [data-workspace-section='settings']
+  ) .status-pane {
+    grid-column: 1;
+    border-right: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .compatibility-workspace .app-shell:is(
+    [data-workspace-section='simulation'],
+    [data-workspace-section='adaptation'],
+    [data-workspace-section='continuation'],
+    [data-workspace-section='audit'],
+    [data-workspace-section='export'],
+    [data-workspace-section='diagnostics'],
+    [data-workspace-section='settings']
+  ) .writing-pane {
+    grid-column: 2;
+    gap: 10px;
+    padding: 12px;
+    border-left: 1px solid var(--line);
+    background: var(--surface-solid);
+  }
+
+  .compatibility-workspace .app-shell:is(
+    [data-workspace-section='simulation'],
+    [data-workspace-section='adaptation'],
+    [data-workspace-section='continuation'],
+    [data-workspace-section='audit'],
+    [data-workspace-section='export'],
+    [data-workspace-section='diagnostics'],
+    [data-workspace-section='settings']
+  ) .writing-pane .event-feed {
+    display: none;
+  }
+
+  .compatibility-workspace .app-shell:is(
+    [data-workspace-section='simulation'],
+    [data-workspace-section='adaptation'],
+    [data-workspace-section='continuation'],
+    [data-workspace-section='audit'],
+    [data-workspace-section='export'],
+    [data-workspace-section='diagnostics'],
+    [data-workspace-section='settings']
+  ) .writing-pane .workbench-stack {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .compatibility-workspace .app-shell:is(
+    [data-workspace-section='simulation'],
+    [data-workspace-section='adaptation'],
+    [data-workspace-section='continuation'],
+    [data-workspace-section='audit'],
+    [data-workspace-section='export'],
+    [data-workspace-section='diagnostics'],
+    [data-workspace-section='settings']
+  ) .status-pane .side-content {
+    padding: 20px clamp(18px, 3vw, 44px) 32px;
+  }
+}
+
+@media (max-width: 1100px) and (min-width: 768px) {
+  .compatibility-workspace .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .compatibility-workspace .mobile-workspace-nav {
+    display: none;
+  }
+
+  .compatibility-workspace .writing-pane {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .compatibility-workspace .app-shell:is(
+    [data-workspace-section='simulation'],
+    [data-workspace-section='adaptation'],
+    [data-workspace-section='continuation'],
+    [data-workspace-section='audit'],
+    [data-workspace-section='export'],
+    [data-workspace-section='diagnostics'],
+    [data-workspace-section='settings']
+  ) .writing-pane {
+    display: none;
+  }
+
+  .compatibility-workspace .app-shell:is(
+    [data-workspace-section='simulation'],
+    [data-workspace-section='adaptation'],
+    [data-workspace-section='continuation'],
+    [data-workspace-section='audit'],
+    [data-workspace-section='export'],
+    [data-workspace-section='diagnostics'],
+    [data-workspace-section='settings']
+  ) .status-pane {
+    position: static;
+    grid-column: 1;
+    grid-row: 2;
+    width: auto;
+    max-height: none;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .project-workspace-topbar {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 7px;
+  }
+
+  .project-workspace-status {
+    min-width: 0;
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 767px), (max-height: 520px) and (max-width: 1024px) {
+  .project-workspace-header {
+    display: none;
+  }
+
+  .compatibility-workspace .app-shell {
+    grid-template-rows: minmax(0, 1fr) calc(var(--mobile-bottom-nav-height) + env(safe-area-inset-bottom));
+  }
+
+  .compatibility-workspace .writing-pane {
+    grid-column: 1;
+    grid-row: 1;
+    width: 100%;
+    max-width: 100vw;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 10px 10px calc(var(--mobile-bottom-nav-height) + env(safe-area-inset-bottom) + 10px);
+  }
+
+  .compatibility-workspace .composer {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .compatibility-workspace .composer input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .compatibility-workspace .app-shell > .mobile-phone-bottom-nav {
+    grid-row: 2;
+  }
+
+  .compatibility-workspace .app-shell[data-workspace-section] .status-pane {
+    position: fixed;
+    z-index: 100;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    grid-column: auto;
+    grid-row: auto;
+    width: 100%;
+    max-height: 100dvh;
+    grid-template-columns: minmax(0, 1fr);
+    transform: translateX(105%);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .compatibility-workspace .app-shell[data-workspace-section] .status-pane.mobile-open {
+    transform: translateX(0);
+  }
+
+  .project-action-rail-header {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) and (orientation: landscape),
+  (max-height: 520px) and (max-width: 1024px) and (orientation: landscape) {
+  .project-section-navigation a {
+    min-height: 36px;
+  }
+}

@@ -8,4 +8,4 @@ services:
       - ./workspace:/workspace
       - ./authority:/var/lib/ainovel
     ports:
-      - "9898:9898"
+      - "9999:9999"

@@ -844,6 +844,23 @@ export function getGlobalModels() {
   return request('/api/models');
 }
 
+export function getGlobalPrompts() {
+  return request('/api/models/global-prompts');
+}
+
+export function updateGlobalPrompt(family, content) {
+  return request(`/api/models/global-prompts/${encodeURIComponent(family)}`, {
+    method: 'PUT',
+    body: JSON.stringify({ content })
+  });
+}
+
+export function resetGlobalPrompt(family) {
+  return request(`/api/models/global-prompts/${encodeURIComponent(family)}`, {
+    method: 'DELETE'
+  });
+}
+
 export function switchGlobalModel(role, provider, model) {
   return request('/api/models/switch', {
     method: 'POST',

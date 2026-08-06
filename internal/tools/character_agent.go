@@ -3,6 +3,9 @@ package tools
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -27,12 +30,13 @@ const (
 )
 
 const (
-	characterContextReportLimit = 4
-	characterContextListLimit   = 12
-	characterContextTextLimit   = 600
-	characterContextFactLimit   = 3
-	characterContextAliasLimit  = 6
-	characterContextMaxBytes    = 40 * 1024
+	characterContextReportLimit  = 4
+	characterContextListLimit    = 12
+	characterContextTextLimit    = 600
+	characterContextFactLimit    = 3
+	characterContextAliasLimit   = 6
+	characterContextMaxBytes     = 40 * 1024
+	characterContextItemMaxBytes = 16 * 1024
 )
 
 // CharacterRunRegistry binds every run ID to one mode and to the exact
@@ -44,22 +48,29 @@ type CharacterRunRegistry struct {
 }
 
 type characterRunState struct {
-	Mode      CharacterRunMode
-	Context   domain.CharacterCardBinding
-	Attempt   int
-	Submitted bool
-	Tool      string
+	Mode            CharacterRunMode
+	Context         domain.CharacterCardBinding
+	Attempt         int
+	Submitted       bool
+	Tool            string
+	EvidenceDigest  string
+	TotalPages      int
+	NextPage        int
+	ContextComplete bool
 }
 
 func NewCharacterRunRegistry() *CharacterRunRegistry {
 	return &CharacterRunRegistry{runs: make(map[string]characterRunState)}
 }
 
-func (r *CharacterRunRegistry) bindContextAttempt(
+func (r *CharacterRunRegistry) bindContextPageAttempt(
 	runID string,
 	mode CharacterRunMode,
 	binding domain.CharacterCardBinding,
 	attempt int,
+	evidenceDigest string,
+	page int,
+	totalPages int,
 ) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -68,8 +79,7 @@ func (r *CharacterRunRegistry) bindContextAttempt(
 		return fmt.Errorf("character run %q is already bound to mode %q: %w", runID, state.Mode, errs.ErrToolConflict)
 	}
 	if exists && attempt > state.Attempt {
-		state.Submitted = false
-		state.Tool = ""
+		state = characterRunState{}
 	}
 	if exists && attempt < state.Attempt {
 		return fmt.Errorf("character run %q attempt %d is stale: %w", runID, attempt, errs.ErrToolConflict)
@@ -77,9 +87,25 @@ func (r *CharacterRunRegistry) bindContextAttempt(
 	if state.Submitted {
 		return fmt.Errorf("character run %q already submitted through %s: %w", runID, state.Tool, errs.ErrToolConflict)
 	}
+	if totalPages <= 0 || page < 0 || page >= totalPages {
+		return fmt.Errorf("character run %q has invalid context page %d/%d: %w", runID, page, totalPages, errs.ErrToolArgs)
+	}
+	if exists && attempt == state.Attempt && state.EvidenceDigest != "" {
+		if !sameCharacterBinding(state.Context, binding) ||
+			state.EvidenceDigest != evidenceDigest || state.TotalPages != totalPages {
+			return fmt.Errorf("character run %q context snapshot changed while paging: %w", runID, errs.ErrToolConflict)
+		}
+	}
+	if page != state.NextPage {
+		return fmt.Errorf("character run %q must read context page %d next, got %d: %w", runID, state.NextPage, page, errs.ErrToolConflict)
+	}
 	state.Mode = mode
 	state.Context = binding
 	state.Attempt = attempt
+	state.EvidenceDigest = evidenceDigest
+	state.TotalPages = totalPages
+	state.NextPage = page + 1
+	state.ContextComplete = state.NextPage == totalPages
 	r.runs[runID] = state
 	return nil
 }
@@ -101,6 +127,9 @@ func (r *CharacterRunRegistry) requireSubmission(
 	}
 	if state.Submitted {
 		return fmt.Errorf("character run %q already submitted through %s: %w", runID, state.Tool, errs.ErrToolConflict)
+	}
+	if !state.ContextComplete {
+		return fmt.Errorf("character run %q must read all %d character_context pages before %s: %w", runID, state.TotalPages, tool, errs.ErrToolPrecondition)
 	}
 	if !sameCharacterBinding(state.Context, expected) {
 		return fmt.Errorf("character run %q evidence snapshot is stale; call character_context in a new run: %w", runID, errs.ErrToolConflict)
@@ -145,7 +174,8 @@ func (t *CharacterContextTool) Name() string { return "character_context" }
 func (t *CharacterContextTool) Description() string {
 	return "Read the bounded, current character evidence packet for exactly one analyze or review run. " +
 		"It returns the Foundation revision/audit, candidate digest, input digest, current candidate, user constraints, " +
-		"and adaptation-only structured source evidence without raw source chapters."
+		"and adaptation-only structured source evidence without raw source chapters. When next_cursor is present, " +
+		"call character_context again with that exact cursor until context_page.complete is true before saving."
 }
 func (t *CharacterContextTool) Label() string                        { return "读取角色证据" }
 func (t *CharacterContextTool) ReadOnly(json.RawMessage) bool        { return true }
@@ -155,12 +185,14 @@ func (t *CharacterContextTool) Schema() map[string]any {
 	return schema.Object(
 		schema.Property("run_id", schema.String("Stable non-empty ID for this Character Agent run")).Required(),
 		schema.Property("mode", schema.Enum("Single responsibility for this run", string(CharacterRunAnalyze), string(CharacterRunReview))).Required(),
+		schema.Property("cursor", schema.String("Opaque next_cursor from the immediately preceding page; omit for the first page")),
 	)
 }
 
 type characterContextArgs struct {
-	RunID string           `json:"run_id"`
-	Mode  CharacterRunMode `json:"mode"`
+	RunID  string           `json:"run_id"`
+	Mode   CharacterRunMode `json:"mode"`
+	Cursor string           `json:"cursor,omitempty"`
 }
 
 func (t *CharacterContextTool) Execute(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
@@ -171,7 +203,7 @@ func (t *CharacterContextTool) Execute(_ context.Context, args json.RawMessage) 
 	if err := validateCharacterRunIdentity(request.RunID, request.Mode); err != nil {
 		return nil, err
 	}
-	packet, binding, err := buildCharacterContext(t.store, request.RunID, request.Mode)
+	packet, binding, err := buildCharacterContextEvidence(t.store, request.RunID, request.Mode)
 	if err != nil {
 		return nil, err
 	}
@@ -190,12 +222,24 @@ func (t *CharacterContextTool) Execute(_ context.Context, args json.RawMessage) 
 	} else if workspaceRun != nil {
 		attempt = workspaceRun.Attempt
 	}
-	if err := t.registry.bindContextAttempt(request.RunID, request.Mode, binding, attempt); err != nil {
-		return nil, err
-	}
 	packet["run_id"] = strings.TrimSpace(request.RunID)
 	packet["mode"] = request.Mode
-	return json.Marshal(packet)
+	page, pageState, err := buildCharacterContextPage(packet, request, binding, attempt)
+	if err != nil {
+		return nil, err
+	}
+	if err := t.registry.bindContextPageAttempt(
+		request.RunID,
+		request.Mode,
+		binding,
+		attempt,
+		pageState.EvidenceDigest,
+		pageState.Index,
+		pageState.Total,
+	); err != nil {
+		return nil, err
+	}
+	return json.Marshal(page)
 }
 
 type SaveCharacterCandidateTool struct {
@@ -646,6 +690,17 @@ func characterReviewResult(
 }
 
 func buildCharacterContext(st *store.Store, runID string, mode CharacterRunMode) (map[string]any, domain.CharacterCardBinding, error) {
+	packet, binding, err := buildCharacterContextEvidence(st, runID, mode)
+	if err != nil {
+		return nil, domain.CharacterCardBinding{}, err
+	}
+	if err := validateCharacterContextBudget(packet); err != nil {
+		return nil, domain.CharacterCardBinding{}, err
+	}
+	return packet, binding, nil
+}
+
+func buildCharacterContextEvidence(st *store.Store, runID string, mode CharacterRunMode) (map[string]any, domain.CharacterCardBinding, error) {
 	foundation, binding, _, projectMode, coreCast, err := currentCharacterRunBinding(st, mode)
 	if err != nil {
 		return nil, domain.CharacterCardBinding{}, err
@@ -748,9 +803,6 @@ func buildCharacterContext(st *store.Store, runID string, mode CharacterRunMode)
 				"authoritative":     false,
 			}
 		}
-	}
-	if err := validateCharacterContextBudget(packet); err != nil {
-		return nil, domain.CharacterCardBinding{}, err
 	}
 	return packet, binding, nil
 }
@@ -1515,23 +1567,433 @@ func compactCharacterJSONValue(value any) any {
 	}
 }
 
-func validateCharacterContextBudget(packet map[string]any) error {
+type characterContextPageState struct {
+	Index          int
+	Total          int
+	EvidenceDigest string
+}
+
+type characterContextCursor struct {
+	Version                  int              `json:"version"`
+	RunID                    string           `json:"run_id"`
+	Mode                     CharacterRunMode `json:"mode"`
+	Page                     int              `json:"page"`
+	Attempt                  int              `json:"attempt"`
+	EvidenceDigest           string           `json:"evidence_digest"`
+	FoundationRevision       int64            `json:"foundation_revision"`
+	FoundationAuditSignature string           `json:"foundation_audit_signature"`
+	InputDigest              string           `json:"input_digest"`
+}
+
+type characterContextEvidenceItem struct {
+	Path  string                 `json:"path"`
+	Value any                    `json:"value"`
+	Chunk *characterContextChunk `json:"chunk,omitempty"`
+}
+
+type characterContextChunk struct {
+	Index int `json:"index"`
+	Total int `json:"total"`
+}
+
+var characterContextCommonKeys = map[string]struct{}{
+	"project_mode":           {},
+	"base_revision":          {},
+	"base_audit_signature":   {},
+	"candidate_digest":       {},
+	"input_digest":           {},
+	"input_signatures":       {},
+	"relationships_reviewed": {},
+	"evidence_policy":        {},
+	"run_id":                 {},
+	"mode":                   {},
+	"workspace_request":      {},
+}
+
+var characterContextEvidenceOrder = []string{
+	"premise",
+	"world_rules",
+	"current_characters",
+	"current_relationships",
+	"lifecycle",
+	"creative_brief",
+	"user_constraints",
+	"legacy_core_cast_binding",
+	"core_cast",
+	"adaptation_evidence",
+	"cast_promotion",
+	"cast_promotion_workflow",
+}
+
+func buildCharacterContextPage(
+	packet map[string]any,
+	request characterContextArgs,
+	binding domain.CharacterCardBinding,
+	attempt int,
+) (map[string]any, characterContextPageState, error) {
+	digest, err := characterContextEvidenceDigest(packet)
+	if err != nil {
+		return nil, characterContextPageState{}, err
+	}
+	plain := cloneCharacterContextMap(packet)
+	if err := finalizeCharacterContextBudget(plain); err == nil {
+		if strings.TrimSpace(request.Cursor) != "" {
+			return nil, characterContextPageState{}, fmt.Errorf("character_context cursor is not valid for an unpaged snapshot: %w", errs.ErrToolConflict)
+		}
+		return plain, characterContextPageState{Index: 0, Total: 1, EvidenceDigest: digest}, nil
+	}
+
+	common, items, err := splitCharacterContextEvidence(packet)
+	if err != nil {
+		return nil, characterContextPageState{}, err
+	}
+	pages, err := packCharacterContextPages(common, items, request, binding, attempt, digest)
+	if err != nil {
+		return nil, characterContextPageState{}, err
+	}
+	pageIndex := 0
+	if strings.TrimSpace(request.Cursor) != "" {
+		cursor, decodeErr := decodeCharacterContextCursor(request.Cursor)
+		if decodeErr != nil {
+			return nil, characterContextPageState{}, decodeErr
+		}
+		if err := validateCharacterContextCursor(cursor, request, binding, attempt, digest); err != nil {
+			return nil, characterContextPageState{}, err
+		}
+		pageIndex = cursor.Page
+	}
+	if pageIndex < 0 || pageIndex >= len(pages) {
+		return nil, characterContextPageState{}, fmt.Errorf("character_context cursor page %d is outside snapshot page count %d: %w", pageIndex, len(pages), errs.ErrToolConflict)
+	}
+	return pages[pageIndex], characterContextPageState{
+		Index: pageIndex, Total: len(pages), EvidenceDigest: digest,
+	}, nil
+}
+
+func characterContextEvidenceDigest(packet map[string]any) (string, error) {
 	data, err := json.Marshal(packet)
 	if err != nil {
-		return fmt.Errorf("marshal bounded Character context: %w", err)
+		return "", fmt.Errorf("marshal Character context evidence digest: %w", err)
 	}
-	if len(data) > characterContextMaxBytes {
-		return fmt.Errorf(
-			"bounded Character context is %d bytes (budget %d); source character evidence must be compacted further: %w",
-			len(data),
-			characterContextMaxBytes,
-			errs.ErrToolPrecondition,
-		)
+	digest := sha256.Sum256(data)
+	return fmt.Sprintf("%x", digest[:]), nil
+}
+
+func splitCharacterContextEvidence(packet map[string]any) (map[string]any, []characterContextEvidenceItem, error) {
+	common := make(map[string]any, len(characterContextCommonKeys))
+	remaining := make(map[string]any, len(packet))
+	for key, value := range packet {
+		if _, ok := characterContextCommonKeys[key]; ok {
+			common[key] = value
+			continue
+		}
+		remaining[key] = value
 	}
+	var items []characterContextEvidenceItem
+	for _, key := range characterContextEvidenceOrder {
+		value, ok := remaining[key]
+		if !ok {
+			continue
+		}
+		delete(remaining, key)
+		var err error
+		items, err = appendCharacterContextEvidence(items, "/"+escapeCharacterContextPath(key), value)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	keys := make([]string, 0, len(remaining))
+	for key := range remaining {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		var err error
+		items, err = appendCharacterContextEvidence(items, "/"+escapeCharacterContextPath(key), remaining[key])
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	return common, items, nil
+}
+
+func appendCharacterContextEvidence(
+	items []characterContextEvidenceItem,
+	path string,
+	value any,
+) ([]characterContextEvidenceItem, error) {
+	normalized, err := normalizeCharacterContextEvidence(value)
+	if err != nil {
+		return nil, fmt.Errorf("normalize Character context evidence %s: %w", path, err)
+	}
+	item := characterContextEvidenceItem{Path: path, Value: normalized}
+	if characterContextEvidenceItemSize(item) <= characterContextItemMaxBytes {
+		return append(items, item), nil
+	}
+	switch typed := normalized.(type) {
+	case map[string]any:
+		keys := make([]string, 0, len(typed))
+		for key := range typed {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			items, err = appendCharacterContextEvidence(items, path+"/"+escapeCharacterContextPath(key), typed[key])
+			if err != nil {
+				return nil, err
+			}
+		}
+		return items, nil
+	case []any:
+		for index, entry := range typed {
+			items, err = appendCharacterContextEvidence(items, fmt.Sprintf("%s/%d", path, index), entry)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return items, nil
+	case string:
+		return append(items, splitCharacterContextString(path, typed)...), nil
+	default:
+		return nil, fmt.Errorf("Character context evidence %s cannot fit one bounded page: %w", path, errs.ErrToolPrecondition)
+	}
+}
+
+func normalizeCharacterContextEvidence(value any) (any, error) {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+	var normalized any
+	if err := json.Unmarshal(data, &normalized); err != nil {
+		return nil, err
+	}
+	return normalized, nil
+}
+
+func splitCharacterContextString(path, value string) []characterContextEvidenceItem {
+	runes := []rune(value)
+	if len(runes) == 0 {
+		return []characterContextEvidenceItem{{Path: path, Value: ""}}
+	}
+	var chunks []string
+	for len(runes) > 0 {
+		length := len(runes)
+		if length > 4096 {
+			length = 4096
+		}
+		for length > 1 {
+			probe := characterContextEvidenceItem{Path: path, Value: string(runes[:length])}
+			if characterContextEvidenceItemSize(probe) <= characterContextItemMaxBytes {
+				break
+			}
+			length /= 2
+		}
+		chunks = append(chunks, string(runes[:length]))
+		runes = runes[length:]
+	}
+	items := make([]characterContextEvidenceItem, 0, len(chunks))
+	for index, chunk := range chunks {
+		items = append(items, characterContextEvidenceItem{
+			Path:  path,
+			Value: chunk,
+			Chunk: &characterContextChunk{Index: index, Total: len(chunks)},
+		})
+	}
+	return items
+}
+
+func characterContextEvidenceItemSize(item characterContextEvidenceItem) int {
+	data, _ := json.Marshal(item)
+	return len(data)
+}
+
+func packCharacterContextPages(
+	common map[string]any,
+	items []characterContextEvidenceItem,
+	request characterContextArgs,
+	binding domain.CharacterCardBinding,
+	attempt int,
+	evidenceDigest string,
+) ([]map[string]any, error) {
+	if len(items) == 0 {
+		return nil, fmt.Errorf("paged Character context has no evidence items: %w", errs.ErrToolPrecondition)
+	}
+	groups := make([][]characterContextEvidenceItem, 0, 2)
+	current := make([]characterContextEvidenceItem, 0)
+	for _, item := range items {
+		trial := append(append([]characterContextEvidenceItem(nil), current...), item)
+		pageIndex := len(groups)
+		packet := newCharacterContextPage(common, trial, pageIndex, len(items), len(items), request, binding, attempt, evidenceDigest)
+		if err := finalizeCharacterContextBudget(packet); err == nil {
+			current = trial
+			continue
+		}
+		if len(current) == 0 {
+			return nil, fmt.Errorf("Character context evidence item %s exceeds page budget: %w", item.Path, errs.ErrToolPrecondition)
+		}
+		groups = append(groups, current)
+		current = []characterContextEvidenceItem{item}
+		packet = newCharacterContextPage(common, current, len(groups), len(items), len(items), request, binding, attempt, evidenceDigest)
+		if err := finalizeCharacterContextBudget(packet); err != nil {
+			return nil, fmt.Errorf("Character context evidence item %s exceeds page budget: %w", item.Path, err)
+		}
+	}
+	groups = append(groups, current)
+
+	pages := make([]map[string]any, 0, len(groups))
+	for index, group := range groups {
+		packet := newCharacterContextPage(common, group, index, len(groups), len(items), request, binding, attempt, evidenceDigest)
+		if err := finalizeCharacterContextBudget(packet); err != nil {
+			return nil, fmt.Errorf("finalize Character context page %d: %w", index, err)
+		}
+		pages = append(pages, packet)
+	}
+	return pages, nil
+}
+
+func newCharacterContextPage(
+	common map[string]any,
+	items []characterContextEvidenceItem,
+	index int,
+	totalPages int,
+	totalItems int,
+	request characterContextArgs,
+	binding domain.CharacterCardBinding,
+	attempt int,
+	evidenceDigest string,
+) map[string]any {
+	packet := cloneCharacterContextMap(common)
+	page := map[string]any{
+		"index":       index,
+		"item_count":  len(items),
+		"complete":    index == totalPages-1,
+		"instruction": "Read every page in order. Evidence item paths are JSON Pointers into the compatible unpaged packet; concatenate same-path string chunks by chunk.index. If next_cursor is present, call character_context again with the same run_id/mode and that exact cursor before saving.",
+	}
+	if index < totalPages-1 {
+		page["next_cursor"] = encodeCharacterContextCursor(characterContextCursor{
+			Version:                  1,
+			RunID:                    strings.TrimSpace(request.RunID),
+			Mode:                     request.Mode,
+			Page:                     index + 1,
+			Attempt:                  attempt,
+			EvidenceDigest:           evidenceDigest,
+			FoundationRevision:       binding.Candidate.FoundationRevision,
+			FoundationAuditSignature: binding.Candidate.FoundationAuditSignature,
+			InputDigest:              binding.InputDigest,
+		})
+	}
+	packet["context_manifest"] = map[string]any{
+		"version":              1,
+		"evidence_digest":      evidenceDigest,
+		"total_pages":          totalPages,
+		"total_evidence_items": totalItems,
+		"lossless":             true,
+		"path_format":          "JSON Pointer",
+	}
+	packet["context_page"] = page
+	packet["evidence_items"] = items
+	return packet
+}
+
+func encodeCharacterContextCursor(cursor characterContextCursor) string {
+	payload, _ := json.Marshal(cursor)
+	signature := characterContextCursorSignature(payload)
+	return base64.RawURLEncoding.EncodeToString(payload) + "." + base64.RawURLEncoding.EncodeToString(signature)
+}
+
+func decodeCharacterContextCursor(value string) (characterContextCursor, error) {
+	parts := strings.Split(strings.TrimSpace(value), ".")
+	if len(parts) != 2 {
+		return characterContextCursor{}, fmt.Errorf("character_context cursor is malformed: %w", errs.ErrToolArgs)
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[0])
+	if err != nil {
+		return characterContextCursor{}, fmt.Errorf("decode character_context cursor payload: %w: %w", errs.ErrToolArgs, err)
+	}
+	signature, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return characterContextCursor{}, fmt.Errorf("decode character_context cursor signature: %w: %w", errs.ErrToolArgs, err)
+	}
+	expected := characterContextCursorSignature(payload)
+	if len(signature) != len(expected) || subtle.ConstantTimeCompare(signature, expected) != 1 {
+		return characterContextCursor{}, fmt.Errorf("character_context cursor signature is invalid: %w", errs.ErrToolArgs)
+	}
+	var cursor characterContextCursor
+	decoder := json.NewDecoder(bytes.NewReader(payload))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&cursor); err != nil {
+		return characterContextCursor{}, fmt.Errorf("decode character_context cursor: %w: %w", errs.ErrToolArgs, err)
+	}
+	return cursor, nil
+}
+
+func characterContextCursorSignature(payload []byte) []byte {
+	digest := sha256.New()
+	_, _ = digest.Write([]byte("character-context-cursor-v1\x00"))
+	_, _ = digest.Write(payload)
+	return digest.Sum(nil)
+}
+
+func validateCharacterContextCursor(
+	cursor characterContextCursor,
+	request characterContextArgs,
+	binding domain.CharacterCardBinding,
+	attempt int,
+	evidenceDigest string,
+) error {
+	if cursor.Version != 1 || cursor.RunID != strings.TrimSpace(request.RunID) || cursor.Mode != request.Mode ||
+		cursor.Attempt != attempt || cursor.EvidenceDigest != evidenceDigest ||
+		cursor.FoundationRevision != binding.Candidate.FoundationRevision ||
+		cursor.FoundationAuditSignature != binding.Candidate.FoundationAuditSignature ||
+		cursor.InputDigest != binding.InputDigest {
+		return fmt.Errorf("character_context cursor belongs to a stale or different evidence snapshot: %w", errs.ErrToolConflict)
+	}
+	return nil
+}
+
+func escapeCharacterContextPath(value string) string {
+	value = strings.ReplaceAll(value, "~", "~0")
+	return strings.ReplaceAll(value, "/", "~1")
+}
+
+func cloneCharacterContextMap(source map[string]any) map[string]any {
+	clone := make(map[string]any, len(source)+1)
+	for key, value := range source {
+		clone[key] = value
+	}
+	return clone
+}
+
+func validateCharacterContextBudget(packet map[string]any) error {
+	return finalizeCharacterContextBudget(packet)
+}
+
+func finalizeCharacterContextBudget(packet map[string]any) error {
 	packet["context_budget"] = map[string]any{
-		"bytes":     len(data),
+		"bytes":     characterContextMaxBytes,
 		"max_bytes": characterContextMaxBytes,
 		"bounded":   true,
+	}
+	for range 3 {
+		data, err := json.Marshal(packet)
+		if err != nil {
+			return fmt.Errorf("marshal bounded Character context: %w", err)
+		}
+		if len(data) > characterContextMaxBytes {
+			delete(packet, "context_budget")
+			return fmt.Errorf(
+				"bounded Character context is %d bytes (budget %d); source character evidence must be compacted further: %w",
+				len(data),
+				characterContextMaxBytes,
+				errs.ErrToolPrecondition,
+			)
+		}
+		budget := packet["context_budget"].(map[string]any)
+		if budget["bytes"] == len(data) {
+			return nil
+		}
+		budget["bytes"] = len(data)
 	}
 	return nil
 }

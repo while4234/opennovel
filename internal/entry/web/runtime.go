@@ -12,7 +12,7 @@ import (
 
 const (
 	DefaultHost    = "127.0.0.1"
-	DefaultPort    = 9898
+	DefaultPort    = 9999
 	EnvRuntimeRoot = "AINOVEL_RUNTIME_ROOT"
 )
 

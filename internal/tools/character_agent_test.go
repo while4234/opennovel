@@ -1,9 +1,12 @@
 package tools
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -554,6 +557,299 @@ func TestCharacterContextIsBoundedAndNeverLoadsRawAdaptationText(t *testing.T) {
 	}
 }
 
+func TestOriginalReviewCharacterContextPaginatesLargeCandidateLosslessly(t *testing.T) {
+	st := characterToolStore(t)
+	brief := strings.Repeat("完整创作约束", 1300)
+	preferences := strings.Repeat("角色禁区", 400)
+	if err := st.RunMeta.SetPlanningReview(&domain.PlanningReview{
+		Status: "collecting", Kind: "foundation", Brief: brief,
+		StartPrompt: "[创作要求]\n" + brief, TargetTotalWords: 300000,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.UserRules.Save(&rules.Snapshot{
+		Version: rules.SnapshotVersion, Status: rules.StatusReady,
+		Structured:  rules.Structured{ChapterWords: &rules.WordRange{Min: 3000, Max: 5000}},
+		Preferences: preferences,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	analyzeRegistry := NewCharacterRunRegistry()
+	analyzeBinding := readCharacterContext(t, st, analyzeRegistry, "large-analyze", CharacterRunAnalyze)
+	characters, relationships := largeOriginalReviewCandidate(t)
+	request := candidateRequest("large-analyze", "large-candidate", analyzeBinding, characters)
+	request.Relationships = relationships
+	if _, err := NewSaveCharacterCandidateTool(st, analyzeRegistry).Execute(
+		context.Background(), characterJSON(t, request),
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	reviewBinding, err := currentReviewCharacterBinding(st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	logicalPacket, _, err := buildCharacterContextEvidence(st, "large-review", CharacterRunReview)
+	if err != nil {
+		t.Fatal(err)
+	}
+	logicalPacket["run_id"] = "large-review"
+	logicalPacket["mode"] = CharacterRunReview
+	logicalJSON, err := json.Marshal(logicalPacket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(logicalJSON) < 65*1024 || len(logicalJSON) > 80*1024 {
+		t.Fatalf("large review fixture = %d bytes, want real-project shape in [65, 80] KiB", len(logicalJSON))
+	}
+	reviewRegistry := NewCharacterRunRegistry()
+	tool := NewCharacterContextTool(st, reviewRegistry)
+	args := characterContextArgs{RunID: "large-review", Mode: CharacterRunReview}
+	firstRaw, err := tool.Execute(context.Background(), characterJSON(t, args))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(firstRaw) > characterContextMaxBytes {
+		t.Fatalf("first page = %d bytes, want <= %d", len(firstRaw), characterContextMaxBytes)
+	}
+	first := decodeCharacterContextPage(t, firstRaw)
+	if int(first["context_budget"].(map[string]any)["bytes"].(float64)) != len(firstRaw) {
+		t.Fatalf("first page context_budget does not match final JSON bytes: %s", firstRaw)
+	}
+	manifest := first["context_manifest"].(map[string]any)
+	if manifest["lossless"] != true || int(manifest["total_pages"].(float64)) < 2 {
+		t.Fatalf("large review was not losslessly paged: %+v", manifest)
+	}
+
+	if _, err := NewSaveCharacterReviewTool(st, reviewRegistry).Execute(
+		context.Background(),
+		characterJSON(t, reviewRequest("large-review", "early-review", reviewBinding, "pass", nil)),
+	); !errors.Is(err, errs.ErrToolPrecondition) || !strings.Contains(err.Error(), "read all") {
+		t.Fatalf("save before final page err = %v", err)
+	}
+
+	firstPage := first["context_page"].(map[string]any)
+	nextCursor := firstPage["next_cursor"].(string)
+	tampered := nextCursor[:len(nextCursor)-1] + "A"
+	if tampered == nextCursor {
+		tampered = nextCursor[:len(nextCursor)-1] + "B"
+	}
+	if _, err := tool.Execute(context.Background(), characterJSON(t, characterContextArgs{
+		RunID: "large-review", Mode: CharacterRunReview, Cursor: tampered,
+	})); !errors.Is(err, errs.ErrToolArgs) {
+		t.Fatalf("tampered cursor err = %v", err)
+	}
+
+	seenCharacterPaths := make(map[string]bool)
+	seenRelationshipPaths := make(map[string]bool)
+	seenRelationshipCount := 0
+	seenSections := make(map[string]bool)
+	seenUnicode := false
+	creativeBriefChunks := make(map[int]string)
+	creativeBriefChunkTotal := 0
+	pageCount := 0
+	page := first
+	for {
+		pageCount++
+		for _, item := range page["evidence_items"].([]any) {
+			evidence := item.(map[string]any)
+			path := evidence["path"].(string)
+			for _, section := range []string{
+				"/premise", "/current_relationships", "/creative_brief", "/user_constraints",
+			} {
+				if strings.HasPrefix(path, section) {
+					seenSections[section] = true
+				}
+			}
+			if strings.HasPrefix(path, "/current_characters/") && strings.Count(path, "/") == 2 {
+				seenCharacterPaths[path] = true
+			}
+			if strings.HasPrefix(path, "/current_relationships/") && strings.Count(path, "/") == 2 {
+				seenRelationshipPaths[path] = true
+			}
+			if path == "/current_relationships" {
+				seenRelationshipCount = len(evidence["value"].([]any))
+			}
+			if path == "/creative_brief/brief" {
+				chunk := evidence["chunk"].(map[string]any)
+				index := int(chunk["index"].(float64))
+				creativeBriefChunkTotal = int(chunk["total"].(float64))
+				creativeBriefChunks[index] = evidence["value"].(string)
+			}
+			if strings.Contains(string(characterJSON(t, evidence["value"])), "不可丢失证据") {
+				seenUnicode = true
+			}
+		}
+		pageMeta := page["context_page"].(map[string]any)
+		if pageMeta["complete"] == true {
+			break
+		}
+		args.Cursor = pageMeta["next_cursor"].(string)
+		raw, executeErr := tool.Execute(context.Background(), characterJSON(t, args))
+		if executeErr != nil {
+			t.Fatal(executeErr)
+		}
+		if len(raw) > characterContextMaxBytes || !json.Valid(raw) {
+			t.Fatalf("page %d has invalid size/json: bytes=%d", pageCount, len(raw))
+		}
+		page = decodeCharacterContextPage(t, raw)
+		if int(page["context_budget"].(map[string]any)["bytes"].(float64)) != len(raw) {
+			t.Fatalf("page %d context_budget does not match final JSON bytes", pageCount)
+		}
+	}
+	if pageCount != int(manifest["total_pages"].(float64)) {
+		t.Fatalf("pages read = %d, manifest = %+v", pageCount, manifest)
+	}
+	var rebuiltBrief strings.Builder
+	for index := 0; index < creativeBriefChunkTotal; index++ {
+		rebuiltBrief.WriteString(creativeBriefChunks[index])
+	}
+	if seenRelationshipCount == 0 {
+		seenRelationshipCount = len(seenRelationshipPaths)
+	}
+	if len(seenCharacterPaths) != len(characters) || seenRelationshipCount != len(relationships) ||
+		len(seenSections) != 4 || !seenUnicode || rebuiltBrief.String() != brief {
+		t.Fatalf(
+			"lossless evidence coverage: character paths=%d/%d relationships=%d/%d sections=%v unicode=%v brief=%d/%d",
+			len(seenCharacterPaths), len(characters), len(seenRelationshipPaths), len(relationships),
+			seenSections, seenUnicode, rebuiltBrief.Len(), len(brief),
+		)
+	}
+
+	if _, err := NewSaveCharacterReviewTool(st, reviewRegistry).Execute(
+		context.Background(),
+		characterJSON(t, reviewRequest("large-review", "complete-review", reviewBinding, "pass", nil)),
+	); err != nil {
+		t.Fatalf("save after all pages: %v", err)
+	}
+}
+
+func TestCharacterContextPaginationIsDeterministicAndSnapshotBound(t *testing.T) {
+	st := largeReviewCharacterStore(t)
+	binding, err := currentReviewCharacterBinding(st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	packet, _, err := buildCharacterContextEvidence(st, "deterministic-review", CharacterRunReview)
+	if err != nil {
+		t.Fatal(err)
+	}
+	packet["run_id"] = "deterministic-review"
+	packet["mode"] = CharacterRunReview
+	request := characterContextArgs{RunID: "deterministic-review", Mode: CharacterRunReview}
+	first, firstState, err := buildCharacterContextPage(packet, request, binding, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, secondState, err := buildCharacterContextPage(packet, request, binding, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstJSON, _ := json.Marshal(first)
+	secondJSON, _ := json.Marshal(second)
+	if !bytes.Equal(firstJSON, secondJSON) || firstState != secondState {
+		t.Fatal("pagination must be byte-deterministic for one evidence snapshot")
+	}
+
+	registry := NewCharacterRunRegistry()
+	tool := NewCharacterContextTool(st, registry)
+	raw, err := tool.Execute(context.Background(), characterJSON(t, request))
+	if err != nil {
+		t.Fatal(err)
+	}
+	page := decodeCharacterContextPage(t, raw)
+	cursor := page["context_page"].(map[string]any)["next_cursor"].(string)
+	if _, err := tool.Execute(context.Background(), characterJSON(t, characterContextArgs{
+		RunID: "other-review", Mode: CharacterRunReview, Cursor: cursor,
+	})); !errors.Is(err, errs.ErrToolConflict) {
+		t.Fatalf("cross-run cursor err = %v", err)
+	}
+	if _, err := tool.Execute(context.Background(), characterJSON(t, characterContextArgs{
+		RunID: "deterministic-review", Mode: CharacterRunReview, Cursor: cursor,
+	})); err != nil {
+		t.Fatalf("read next page: %v", err)
+	}
+	if _, err := tool.Execute(context.Background(), characterJSON(t, characterContextArgs{
+		RunID: "deterministic-review", Mode: CharacterRunReview, Cursor: cursor,
+	})); !errors.Is(err, errs.ErrToolConflict) {
+		t.Fatalf("duplicate page cursor err = %v", err)
+	}
+
+	snapshot, err := st.UserRules.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot.Preferences += "\n新增角色约束"
+	if err := st.UserRules.Save(snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tool.Execute(context.Background(), characterJSON(t, characterContextArgs{
+		RunID: "deterministic-review", Mode: CharacterRunReview, Cursor: cursor,
+	})); !errors.Is(err, errs.ErrToolConflict) {
+		t.Fatalf("stale snapshot cursor err = %v", err)
+	}
+}
+
+func TestSmallCharacterContextKeepsCompatibleUnpagedShape(t *testing.T) {
+	st := characterToolStore(t)
+	raw, err := NewCharacterContextTool(st, NewCharacterRunRegistry()).Execute(
+		context.Background(), json.RawMessage(`{"run_id":"small-analyze","mode":"analyze"}`),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	page := decodeCharacterContextPage(t, raw)
+	if _, paged := page["context_page"]; paged {
+		t.Fatalf("small response unexpectedly changed to paged shape: %s", raw)
+	}
+	if _, ok := page["current_characters"]; !ok {
+		t.Fatalf("small response lost legacy current_characters: %s", raw)
+	}
+	if len(raw) > characterContextMaxBytes {
+		t.Fatalf("small response = %d bytes, want <= %d", len(raw), characterContextMaxBytes)
+	}
+}
+
+func TestRealCharacterContextPagination(t *testing.T) {
+	outputDir := strings.TrimSpace(os.Getenv("AINOVEL_REAL_CHARACTER_OUTPUT"))
+	if outputDir == "" {
+		t.Skip("set AINOVEL_REAL_CHARACTER_OUTPUT to a disposable copy of a project output directory")
+	}
+	st := store.NewStore(outputDir)
+	registry := NewCharacterRunRegistry()
+	tool := NewCharacterContextTool(st, registry)
+	args := characterContextArgs{RunID: "real-character-review-readonly", Mode: CharacterRunReview}
+	totalBytes := 0
+	pages := 0
+	pageBytes := make([]int, 0, 2)
+	for {
+		raw, err := tool.Execute(context.Background(), characterJSON(t, args))
+		if err != nil {
+			t.Fatal(err)
+		}
+		pages++
+		totalBytes += len(raw)
+		pageBytes = append(pageBytes, len(raw))
+		if len(raw) > characterContextMaxBytes || !json.Valid(raw) {
+			t.Fatalf("real context page %d invalid: bytes=%d", pages, len(raw))
+		}
+		packet := decodeCharacterContextPage(t, raw)
+		if int(packet["context_budget"].(map[string]any)["bytes"].(float64)) != len(raw) {
+			t.Fatalf("real context page %d budget metadata mismatch", pages)
+		}
+		page, paged := packet["context_page"].(map[string]any)
+		if !paged || page["complete"] == true {
+			break
+		}
+		args.Cursor = page["next_cursor"].(string)
+		if pages > 100 {
+			t.Fatal("real context pagination exceeded deterministic safety bound")
+		}
+	}
+	t.Logf("real Character context pages=%d page_bytes=%v aggregate_page_bytes=%d", pages, pageBytes, totalBytes)
+}
+
 func TestAdaptationCharacterCandidateBecomesStaleWhenInputsChange(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -733,6 +1029,89 @@ func completeCharacterCandidate() []domain.Character {
 		},
 		Notes: "",
 	}}
+}
+
+func largeOriginalReviewCandidate(t *testing.T) ([]domain.Character, []domain.CharacterRelationship) {
+	t.Helper()
+	base := completeCharacterCandidate()[0]
+	characters := make([]domain.Character, 0, 11)
+	for index := 0; index < 11; index++ {
+		data, err := json.Marshal(base)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var character domain.Character
+		if err := json.Unmarshal(data, &character); err != nil {
+			t.Fatal(err)
+		}
+		character.ID = fmt.Sprintf("char-large-%02d", index)
+		character.Name = fmt.Sprintf("分页角色%02d", index)
+		character.Role = fmt.Sprintf("不可替代的叙事职责%02d", index)
+		character.Notes = strings.Repeat("不可丢失证据", 120) + fmt.Sprintf("-%02d", index)
+		characters = append(characters, character)
+	}
+	relationships := make([]domain.CharacterRelationship, 0, 17)
+	for index := 0; index < 17; index++ {
+		source := index % len(characters)
+		target := (index + 1 + index/len(characters)) % len(characters)
+		relationships = append(relationships, domain.CharacterRelationship{
+			ID:                fmt.Sprintf("rel-large-%02d", index),
+			SourceCharacterID: characters[source].ID,
+			TargetCharacterID: characters[target].ID,
+			Type:              domain.RelationshipTypeOther,
+			Label:             "结构化关系证据",
+			Direction:         domain.RelationshipDirectionDirected,
+			Status:            domain.RelationshipStatusPlanned,
+			Description:       strings.Repeat("关系因果与变化约束", 20),
+			Since:             "故事开始前",
+			Tags:              []string{"审计", "连续性"},
+			Constraints:       []string{"关系端点不得丢失", "方向不得反转"},
+		})
+	}
+	return characters, relationships
+}
+
+func largeReviewCharacterStore(t *testing.T) *store.Store {
+	t.Helper()
+	st := characterToolStore(t)
+	brief := strings.Repeat("完整创作约束", 1300)
+	if err := st.RunMeta.SetPlanningReview(&domain.PlanningReview{
+		Status: "collecting", Kind: "foundation", Brief: brief,
+		StartPrompt: "[创作要求]\n" + brief, TargetTotalWords: 300000,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.UserRules.Save(&rules.Snapshot{
+		Version: rules.SnapshotVersion, Status: rules.StatusReady,
+		Preferences: strings.Repeat("角色禁区", 400),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	registry := NewCharacterRunRegistry()
+	binding := readCharacterContext(t, st, registry, "large-store-analyze", CharacterRunAnalyze)
+	characters, relationships := largeOriginalReviewCandidate(t)
+	request := candidateRequest("large-store-analyze", "large-store-candidate", binding, characters)
+	request.Relationships = relationships
+	if _, err := NewSaveCharacterCandidateTool(st, registry).Execute(
+		context.Background(), characterJSON(t, request),
+	); err != nil {
+		t.Fatal(err)
+	}
+	return st
+}
+
+func currentReviewCharacterBinding(st *store.Store) (domain.CharacterCardBinding, error) {
+	_, binding, _, _, _, err := currentCharacterRunBinding(st, CharacterRunReview)
+	return binding, err
+}
+
+func decodeCharacterContextPage(t *testing.T, raw json.RawMessage) map[string]any {
+	t.Helper()
+	var page map[string]any
+	if err := json.Unmarshal(raw, &page); err != nil {
+		t.Fatal(err)
+	}
+	return page
 }
 
 func readCharacterContext(

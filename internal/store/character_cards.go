@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"sync"
@@ -14,6 +15,8 @@ import (
 
 const characterCardLifecycleFile = "meta/character_cards/lifecycle.json"
 const characterCardCandidateFile = "meta/character_cards/candidate.json"
+
+var characterCardProjectLocks sync.Map
 
 type CharacterCardLifecycleConflictError struct {
 	Expected int64
@@ -28,7 +31,7 @@ func (e *CharacterCardLifecycleConflictError) Error() string {
 // Canonical character content remains owned by FoundationStore.
 type CharacterCardStore struct {
 	io *IO
-	mu sync.Mutex
+	mu *sync.Mutex
 }
 
 func (s *CharacterCardStore) LoadCandidate() (*domain.CharacterCardCandidate, error) {
@@ -82,6 +85,19 @@ func (s *CharacterCardStore) SaveCandidateCAS(
 // lifecycle sidecar. Canonical StoryFoundation and immutable adaptation source
 // data are never touched.
 func (s *CharacterCardStore) DiscardCandidate(expectedDigest string) error {
+	existing, err := s.LoadCandidate()
+	if err != nil {
+		return err
+	}
+	if existing == nil {
+		return os.ErrNotExist
+	}
+	return s.DiscardCandidateCAS(existing.Revision, expectedDigest)
+}
+
+// DiscardCandidateCAS removes a staged candidate only when both its revision
+// and content digest still match the caller's snapshot.
+func (s *CharacterCardStore) DiscardCandidateCAS(expectedRevision int64, expectedDigest string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	existing, err := s.loadCandidateUnlocked()
@@ -90,6 +106,12 @@ func (s *CharacterCardStore) DiscardCandidate(expectedDigest string) error {
 	}
 	if existing == nil {
 		return os.ErrNotExist
+	}
+	if existing.Revision != expectedRevision {
+		return &CharacterCardLifecycleConflictError{
+			Expected: expectedRevision,
+			Actual:   existing.Revision,
+		}
 	}
 	digest, err := domain.CharacterCardContentDigest(existing.Foundation)
 	if err != nil {
@@ -108,7 +130,22 @@ func (s *CharacterCardStore) DiscardCandidate(expectedDigest string) error {
 }
 
 func newCharacterCardStore(io *IO) *CharacterCardStore {
-	return &CharacterCardStore{io: io}
+	key, err := filepath.Abs(io.dir)
+	if err != nil {
+		key = io.dir
+	}
+	key = strings.ToLower(filepath.Clean(key))
+	value, _ := characterCardProjectLocks.LoadOrStore(key, &sync.Mutex{})
+	return &CharacterCardStore{io: io, mu: value.(*sync.Mutex)}
+}
+
+// LoadPersistedLifecycle returns the normalized durable lifecycle without
+// reconciling it against a caller-supplied binding. Recovery code uses this to
+// distinguish a confirmed publication from an unconfirmed stale sidecar.
+func (s *CharacterCardStore) LoadPersistedLifecycle() (*domain.CharacterCardLifecycle, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.loadUnlocked()
 }
 
 func (s *CharacterCardStore) Load(current domain.CharacterCardBinding) (*domain.CharacterCardLifecycle, error) {

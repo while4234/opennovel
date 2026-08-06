@@ -52,7 +52,12 @@ export const MOBILE_TOOL_GROUPS = [
   }
 ];
 
+const PRIMARY_VIEW_LABELS = {
+  manuscript: '专业稿件'
+};
+
 export function mobileToolLabel(toolID) {
+  if (PRIMARY_VIEW_LABELS[toolID]) return PRIMARY_VIEW_LABELS[toolID];
   return MOBILE_TOOL_GROUPS
     .flatMap((group) => group.items)
     .find((item) => item.id === toolID)?.label || '工具详情';

@@ -133,7 +133,7 @@ func RepairConfirmedCharacterWorkflowForResume(st *store.Store) error {
 	if err != nil || candidate == nil {
 		return err
 	}
-	lifecycle, err := st.CharacterCards.Load(candidate.Base)
+	lifecycle, err := st.CharacterCards.LoadPersistedLifecycle()
 	if err != nil {
 		return err
 	}
@@ -141,6 +141,49 @@ func RepairConfirmedCharacterWorkflowForResume(st *store.Store) error {
 		return nil
 	}
 	return rebindConfirmedCharacterWorkflow(st)
+}
+
+// RepairCharacterWorkflowForResume reconciles resumable Character state.
+// Confirmed publications retain the strict rebind path. An unconfirmed staged
+// candidate that no longer matches the canonical Foundation or current inputs
+// is discarded with CAS so the Character Agent can regenerate it normally.
+func RepairCharacterWorkflowForResume(st *store.Store) error {
+	if err := RepairConfirmedCharacterWorkflowForResume(st); err != nil {
+		return err
+	}
+	candidate, err := st.CharacterCards.LoadCandidate()
+	if err != nil || candidate == nil {
+		return err
+	}
+	lifecycle, err := st.CharacterCards.LoadPersistedLifecycle()
+	if err != nil {
+		return err
+	}
+	if lifecycle != nil && lifecycle.ConfirmationStatus == domain.CharacterCardConfirmed {
+		return nil
+	}
+	_, current, _, _, err := CurrentCharacterCanonicalBinding(st)
+	if err != nil {
+		return err
+	}
+	baseStale := candidate.Base.Candidate != current.Candidate || candidate.Base.InputDigest != current.InputDigest
+	candidateBinding, err := domain.CharacterCardBindingFromFoundation(candidate.Foundation, candidate.Base.Inputs)
+	if err != nil {
+		return err
+	}
+	lifecycleStale := lifecycle != nil && (lifecycle.Candidate != candidateBinding.Candidate ||
+		lifecycle.InputDigest != candidateBinding.InputDigest)
+	if !baseStale && !lifecycleStale {
+		return nil
+	}
+	digest, err := domain.CharacterCardContentDigest(candidate.Foundation)
+	if err != nil {
+		return err
+	}
+	if err := st.CharacterCards.DiscardCandidateCAS(candidate.Revision, digest); err != nil {
+		return fmt.Errorf("discard stale unconfirmed Character candidate: %w", err)
+	}
+	return nil
 }
 
 // rebindConfirmedCharacterWorkflow advances the Character candidate and

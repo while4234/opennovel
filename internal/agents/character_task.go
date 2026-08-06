@@ -73,6 +73,8 @@ func (t CharacterTask) Prompt() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("marshal character task: %w", err)
 	}
-	return "Execute exactly one Character Agent run. Call character_context first, then the matching single save tool. Task JSON:\n" +
+	return "Execute exactly one Character Agent run. Call character_context first. While its response contains context_page.next_cursor, " +
+		"call character_context again with the same run_id/mode and that exact cursor; do not repeat or skip a page. " +
+		"Only after context_page.complete is true (or an unpaged response is returned), call the matching single save tool. Task JSON:\n" +
 		string(payload), nil
 }

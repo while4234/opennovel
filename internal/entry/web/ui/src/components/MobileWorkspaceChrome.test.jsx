@@ -71,6 +71,33 @@ describe('mobile workspace chrome', () => {
     await act(async () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
     expect(onCloseActions).toHaveBeenCalledOnce();
   });
+
+  it('opens and closes the controlled project action sheet from its existing trigger', async () => {
+    function ControlledChrome() {
+      const [actionsOpen, setActionsOpen] = React.useState(false);
+      return (
+        <MobileWorkspaceChrome
+          actions={<button type="button">保存快照</button>}
+          actionsOpen={actionsOpen}
+          connection="connected"
+          currentView="writing"
+          onCloseActions={() => setActionsOpen(false)}
+          onOpenActions={() => setActionsOpen(true)}
+          onOpenProjects={vi.fn()}
+          onOpenTools={vi.fn()}
+          onSelectManuscript={vi.fn()}
+          onSelectWriting={vi.fn()}
+          projectName="雾城来信"
+        />
+      );
+    }
+
+    await act(async () => root.render(<ControlledChrome />));
+    await act(async () => container.querySelector('[aria-label="打开项目操作"]').click());
+    expect(container.querySelector('[role="dialog"][aria-label="项目操作"]')).not.toBeNull();
+    await act(async () => container.querySelector('[aria-label="关闭项目操作"]').click());
+    expect(container.querySelector('[role="dialog"][aria-label="项目操作"]')).toBeNull();
+  });
 });
 
 describe('mobile tool menu', () => {
@@ -88,6 +115,7 @@ describe('mobile tool menu', () => {
     act(() => Array.from(container.querySelectorAll('button')).find((button) => button.textContent.includes('改编审计')).click());
     expect(selectTool).toHaveBeenCalledWith('audit');
     expect(mobileToolLabel('audit')).toBe('改编审计');
+    expect(mobileToolLabel('manuscript')).toBe('专业稿件');
     act(() => container.querySelector('[aria-label="关闭工具中心"]').click());
     expect(close).toHaveBeenCalledOnce();
     act(() => root.unmount());

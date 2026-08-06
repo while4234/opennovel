@@ -26,7 +26,7 @@ Preview without mutating libraries:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\seed-web-libraries.ps1 `
-  -BaseUrl http://127.0.0.1:9898 `
+  -BaseUrl http://127.0.0.1:9999 `
   -RuntimeRoot C:\Users\Hi\.ainovel\novels-preview `
   -PlanOnly
 ```
@@ -35,7 +35,7 @@ Seed through the Web API and local novel seed command:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\seed-web-libraries.ps1 `
-  -BaseUrl http://127.0.0.1:9898 `
+  -BaseUrl http://127.0.0.1:9999 `
   -RuntimeRoot C:\Users\Hi\.ainovel\novels-preview `
   -Apply
 ```
@@ -44,7 +44,7 @@ Verify existing state:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\seed-web-libraries.ps1 `
-  -BaseUrl http://127.0.0.1:9898 `
+  -BaseUrl http://127.0.0.1:9999 `
   -RuntimeRoot C:\Users\Hi\.ainovel\novels-preview `
   -VerifyOnly
 ```

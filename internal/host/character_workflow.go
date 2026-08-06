@@ -34,8 +34,8 @@ type CharacterCandidateEditRequest struct {
 // current Character candidate has passed deterministic and independent review
 // but before it has been published as the canonical StoryFoundation/CoreCast.
 func CharacterConfirmationRequired(st *storepkg.Store) (bool, error) {
-	if err := tools.RepairConfirmedCharacterWorkflowForResume(st); err != nil {
-		return false, fmt.Errorf("repair confirmed Character workflow: %w", err)
+	if err := tools.RepairCharacterWorkflowForResume(st); err != nil {
+		return false, fmt.Errorf("repair Character workflow for resume: %w", err)
 	}
 	candidate, lifecycle, binding, err := tools.CurrentCharacterWorkflow(st)
 	if err != nil {

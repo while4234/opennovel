@@ -32,6 +32,7 @@ import {
   X
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   MobileToolDetailHeader,
   MobileToolMenu,
@@ -40,11 +41,31 @@ import {
 } from './components/MobileWorkspaceChrome.jsx';
 import { shouldShowWorkflowProgressPanel, WorkflowProgressPanel } from './workflow-progress.jsx';
 import { ManuscriptWorkspace } from './manuscript/ManuscriptWorkspace.jsx';
+import { AppShell } from './shell/AppShell.jsx';
+import { ProjectCenter } from './shell/ProjectCenter.jsx';
+import { ProjectRouteRecovery } from './shell/ProjectRouteRecovery.jsx';
+import { projectWorkspacePath, resolveAppRoute } from './shell/route-config.js';
+import { useGuardedNavigate, useNavigationGuard } from './navigation/NavigationGuard.jsx';
+import { ContextSettings } from './settings/ContextSettings.jsx';
+import { GlobalPromptSettings } from './settings/GlobalPromptSettings.jsx';
+import {
+  SettingsCenter,
+  SettingsScopeSelector,
+  settingsProjectIdFromSearch,
+  settingsSectionFromPath,
+  settingsSectionPath
+} from './settings/SettingsCenter.jsx';
+import { Dashboard } from './knowledge/Dashboard.jsx';
+import { KnowledgeFoundationPage } from './knowledge/KnowledgeFoundationPage.jsx';
+import { LibraryCenter } from './knowledge/LibraryCenter.jsx';
+import { ProjectActionRailHeader, ProjectModelSettingsLink, ProjectWorkspaceHeader } from './workspace/ProjectWorkspaceShell.jsx';
+import { isMobileTaskSection, isMobileWorkspaceViewport, workspaceSectionForView, workspaceStateForSection } from './workspace/route-mapping.js';
 import {
   analyzeAdaptationSource,
   analyzeSimulation,
   applyAdaptationAudit,
   cancelSemanticAdaptationAudit,
+  addProviderModel,
   addGlobalProviderModel,
   approveContinuationOutlines,
   approveContinuationProposal,
@@ -749,6 +770,7 @@ function createCustomModelState() {
     label: '',
     template_provider: 'deepseek',
     type: 'openai',
+    auth: '',
     model: '',
 	model_reasoning_effort: '',
     base_url: '',
@@ -849,13 +871,21 @@ export function shouldHydratePendingPlanningReviewDetails(snapshot) {
 }
 
 export default function App() {
+  const location = useLocation();
+  const navigate = useGuardedNavigate();
+  const resolvedRoute = useMemo(() => resolveAppRoute(location.pathname), [location.pathname]);
+  const workspaceSection = resolvedRoute.kind === 'workspace' ? resolvedRoute.section : 'write';
+  const settingsVisible = resolvedRoute.kind === 'compatibility' && resolvedRoute.path.startsWith('/settings/');
+  const settingsSection = settingsSectionFromPath(location.pathname);
   const [setup, setSetup] = useState(() => ({
     ...createSetupState(),
     loading: typeof window !== 'undefined'
   }));
   const [runtime, setRuntime] = useState(null);
   const [projects, setProjects] = useState([]);
+  const [projectListState, setProjectListState] = useState({ loading: true, loaded: false, error: '' });
   const [trashProjects, setTrashProjects] = useState([]);
+  const [trashListState, setTrashListState] = useState({ loading: false, error: '' });
   const [trashOpen, setTrashOpen] = useState(false);
   const [activeProject, setActiveProject] = useState(null);
   const [projectOpen, setProjectOpen] = useState({ status: 'idle', project: null, error: '' });
@@ -898,6 +928,14 @@ export default function App() {
   const [modelConfig, setModelConfig] = useState(null);
   const [customModel, setCustomModel] = useState(createCustomModelState);
   const [backendStatus, setBackendStatus] = useState(null);
+  const [settingsScopeProjectId, setSettingsScopeProjectId] = useState('');
+  const [settingsModelConfig, setSettingsModelConfig] = useState(null);
+  const [settingsRuntime, setSettingsRuntime] = useState(null);
+  const [settingsCustomModel, setSettingsCustomModel] = useState(createCustomModelState);
+  const [settingsModelState, setSettingsModelState] = useState({ status: 'idle', error: '' });
+  const [settingsBackendProjectId, setSettingsBackendProjectId] = useState('');
+  const [settingsBackendStatus, setSettingsBackendStatus] = useState(null);
+  const [settingsBackendState, setSettingsBackendState] = useState({ status: 'idle', error: '' });
   const [connection, setConnection] = useState('idle');
   const [usageAnalytics, setUsageAnalytics] = useState({ status: 'idle', report: null, recommendations: [], error: '' });
   const [busy, setBusy] = useState(false);
@@ -912,6 +950,14 @@ export default function App() {
   const outlineRevisionHydrationRef = useRef('');
   const forceFoundationProjectOpenRef = useRef('');
   const mobileOverlayTriggerRef = useRef(null);
+  const settingsModelLoadSeqRef = useRef(0);
+  const settingsScopeProjectIdRef = useRef('');
+  const settingsBackendProjectIdRef = useRef('');
+
+  const confirmFoundationNavigation = useCallback(() => (
+    !foundationDraftDirty || window.confirm('设定中心有未发布草稿。离开后这些修改不会写入服务器，确认离开吗？')
+  ), [foundationDraftDirty]);
+  useNavigationGuard(centerView === 'foundation' && foundationDraftDirty, confirmFoundationNavigation);
 
   const snapshot = workbench.snapshot;
   const currentProjectNextAction = useMemo(() => projectNextAction(snapshot), [snapshot]);
@@ -1441,13 +1487,29 @@ export default function App() {
   }, [activeProject?.id, selectedChapterRevisionView.chapter, showChapterRevisionWorkspace]);
 
   const refreshProjects = useCallback(async () => {
-    const data = await listProjects();
-    setProjects(data.projects || []);
+    setProjectListState((previous) => ({ ...previous, loading: true, error: '' }));
+    try {
+      const data = await listProjects();
+      setProjects(data.projects || []);
+      setProjectListState({ loading: false, loaded: true, error: '' });
+      return data;
+    } catch (err) {
+      setProjectListState((previous) => ({ ...previous, loading: false, loaded: true, error: err.message }));
+      throw err;
+    }
   }, []);
 
   const refreshTrashProjects = useCallback(async () => {
-    const data = await listTrashProjects();
-    setTrashProjects(data.projects || []);
+    setTrashListState({ loading: true, error: '' });
+    try {
+      const data = await listTrashProjects();
+      setTrashProjects(data.projects || []);
+      setTrashListState({ loading: false, error: '' });
+      return data;
+    } catch (err) {
+      setTrashListState({ loading: false, error: err.message });
+      throw err;
+    }
   }, []);
 
   const loadInitialLibraries = useCallback(async () => {
@@ -1566,11 +1628,13 @@ export default function App() {
       }));
       setRuntime(runtimeData);
       setProjects(projectsData.projects || []);
+      setProjectListState({ loading: false, loaded: true, error: '' });
       if (!activeProjectIdRef.current) {
         setModelConfig(modelData.models || null);
       }
     } catch (err) {
       setError(err.message);
+      setProjectListState((previous) => ({ ...previous, loading: false, loaded: true, error: err.message }));
       setSetup((previous) => ({ ...previous, loading: false, error: err.message }));
     }
   }, []);
@@ -1590,6 +1654,70 @@ export default function App() {
   useEffect(() => {
     loadResumeSchedule();
   }, [loadResumeSchedule]);
+
+  useEffect(() => {
+    settingsScopeProjectIdRef.current = settingsScopeProjectId;
+  }, [settingsScopeProjectId]);
+
+  useEffect(() => {
+    if (!settingsVisible || !['providers', 'models'].includes(settingsSection) || !projectListState.loaded) return;
+    const requestedProjectId = settingsProjectIdFromSearch(location.search);
+    const nextProjectId = projects.some((project) => project.id === requestedProjectId) ? requestedProjectId : '';
+    setSettingsScopeProjectId((current) => current === nextProjectId ? current : nextProjectId);
+  }, [location.search, projectListState.loaded, projects, settingsSection, settingsVisible]);
+
+  useEffect(() => {
+    settingsBackendProjectIdRef.current = settingsBackendProjectId;
+  }, [settingsBackendProjectId]);
+
+  useEffect(() => {
+    if (!settingsVisible || !['providers', 'models'].includes(settingsSection)) return undefined;
+    const requestSeq = settingsModelLoadSeqRef.current + 1;
+    settingsModelLoadSeqRef.current = requestSeq;
+    setSettingsModelState({ status: 'loading', error: '' });
+    const load = settingsScopeProjectId ? getProjectModels(settingsScopeProjectId) : getGlobalModels();
+    void load.then((data) => {
+      if (requestSeq !== settingsModelLoadSeqRef.current) return;
+      setSettingsModelConfig(data.models || null);
+      if (data.runtime) setSettingsRuntime(data.runtime);
+      setSettingsModelState({ status: 'done', error: '' });
+    }).catch((err) => {
+      if (requestSeq !== settingsModelLoadSeqRef.current) return;
+      setSettingsModelState({ status: 'error', error: err.message });
+    });
+    return () => {
+      if (requestSeq === settingsModelLoadSeqRef.current) settingsModelLoadSeqRef.current += 1;
+    };
+  }, [settingsScopeProjectId, settingsSection, settingsVisible]);
+
+  useEffect(() => {
+    if (settingsRuntime || !runtime) return;
+    setSettingsRuntime(runtime);
+  }, [runtime, settingsRuntime]);
+
+  useEffect(() => {
+    if (!settingsVisible || settingsSection !== 'backend' || settingsBackendProjectId || projects.length === 0) return;
+    setSettingsBackendProjectId(projects[0].id);
+  }, [projects, settingsBackendProjectId, settingsSection, settingsVisible]);
+
+  useEffect(() => {
+    if (!settingsVisible || settingsSection !== 'backend' || !settingsBackendProjectId) {
+      if (!settingsBackendProjectId) setSettingsBackendStatus(null);
+      return undefined;
+    }
+    const projectId = settingsBackendProjectId;
+    setSettingsBackendState({ status: 'loading', error: '' });
+    void getBackendStatus(projectId).then((data) => {
+      if (settingsBackendProjectIdRef.current !== projectId) return;
+      setSettingsBackendStatus(data.backend || null);
+      setSettingsBackendState({ status: 'done', error: '' });
+    }).catch((err) => {
+      if (settingsBackendProjectIdRef.current !== projectId) return;
+      setSettingsBackendStatus(null);
+      setSettingsBackendState({ status: 'error', error: err.message });
+    });
+    return undefined;
+  }, [settingsBackendProjectId, settingsSection, settingsVisible]);
 
   useEffect(() => {
     if (!projectMenu) {
@@ -4493,6 +4621,10 @@ export default function App() {
     setSideView(coCreate.kind === 'adapt' ? 'adapt' : 'status');
   }, [sideView, globalCoCreateVisible, coCreate.kind]);
   const openTool = (view) => {
+    const section = workspaceSectionForView(view, view === 'manuscript' ? 'manuscript' : 'writing');
+    if (activeProject?.id && resolvedRoute.kind === 'workspace' && section !== workspaceSection) {
+      navigate(projectWorkspacePath(activeProject.id, section));
+    }
     setSideView(view);
     if (view === 'manuscript') setCenterView('manuscript');
     setMobileToolView('detail');
@@ -4500,6 +4632,9 @@ export default function App() {
   };
   const openFoundationCenter = () => {
     setFoundationNavigation({ projectId: '', tab: '', anchor: '', requestId: 0 });
+    if (activeProject?.id && resolvedRoute.kind === 'workspace' && workspaceSection !== 'foundation') {
+      navigate(projectWorkspacePath(activeProject.id, 'foundation'));
+    }
     setCenterView('foundation');
     setProjectDrawerOpen(false);
     setToolDrawerOpen(false);
@@ -4529,6 +4664,7 @@ export default function App() {
     setMobileActionsOpen((open) => !open);
   };
   const selectMobileWriting = () => {
+    if (activeProject?.id) navigate(projectWorkspacePath(activeProject.id, 'write'));
     setCenterView('writing');
     if (sideView === 'manuscript') setSideView('status');
     setProjectDrawerOpen(false);
@@ -4536,6 +4672,7 @@ export default function App() {
     setMobileActionsOpen(false);
   };
   const selectMobileManuscript = () => {
+    if (activeProject?.id) navigate(projectWorkspacePath(activeProject.id, 'manuscript'));
     setCenterView('manuscript');
     setSideView('manuscript');
     setProjectDrawerOpen(false);
@@ -4557,6 +4694,9 @@ export default function App() {
   const closeMobileDrawers = () => {
     setProjectDrawerOpen(false);
     setToolDrawerOpen(false);
+    if (activeProject?.id && resolvedRoute.kind === 'workspace' && isMobileTaskSection(workspaceSection)) {
+      navigate(projectWorkspacePath(activeProject.id, 'write'));
+    }
     globalThis.requestAnimationFrame?.(() => mobileOverlayTriggerRef.current?.focus?.());
   };
   useEffect(() => {
@@ -4597,6 +4737,7 @@ export default function App() {
       anchor: 'foundation-character-agent',
       requestId: Date.now()
     });
+    if (activeProject?.id) navigate(projectWorkspacePath(activeProject.id, 'foundation'));
     setCenterView('foundation');
     setToolDrawerOpen(false);
   };
@@ -4769,6 +4910,130 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    if (resolvedRoute.kind === 'redirect') {
+      navigate(resolvedRoute.destination, { replace: true });
+    }
+  }, [navigate, resolvedRoute]);
+
+  useEffect(() => {
+    if (resolvedRoute.kind === 'workspace') {
+      const project = projects.find((item) => item.id === resolvedRoute.projectId);
+      if (project && activeProject?.id !== project.id && projectOpen.project?.id !== project.id) {
+        void openProject(project);
+      }
+      applyWorkspaceRoute(resolvedRoute.section, {
+        mobile: isMobileWorkspaceViewport(),
+        setCenterView,
+        setSideView,
+        setToolDrawerOpen
+      });
+      return;
+    }
+    if (resolvedRoute.kind === 'compatibility') {
+      applyCompatibilityRoute(resolvedRoute.path, {
+        activeProject,
+        setCenterView,
+        setFoundationNavigation,
+        setSideView,
+        setToolDrawerOpen
+      });
+    }
+  }, [activeProject?.id, projectOpen.project?.id, projects, resolvedRoute]);
+
+  const createProjectFromCenter = async (name) => {
+    setBusy(true);
+    setError('');
+    try {
+      const project = await createProject(name);
+      await refreshProjects();
+      navigate(projectWorkspacePath(project.id));
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const renameProjectFromCenter = async (project, name) => {
+    setBusy(true);
+    setError('');
+    try {
+      const updated = await renameProject(project.id, name);
+      setProjects((previous) => previous.map((item) => (item.id === updated.id ? updated : item)));
+      setActiveProject((previous) => (previous?.id === updated.id ? updated : previous));
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const cloneProjectFromCenter = async (project, name) => {
+    setBusy(true);
+    setError('');
+    try {
+      const response = await cloneProject(project.id, name);
+      const clonedProject = response?.project || response;
+      if (!clonedProject?.id) throw new Error('项目克隆成功，但响应中缺少新项目信息');
+      await refreshProjects();
+      navigate(projectWorkspacePath(clonedProject.id));
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const trashProjectFromCenter = async (project) => {
+    setBusy(true);
+    setError('');
+    try {
+      await trashProject(project.id);
+      setProjects((previous) => previous.filter((item) => item.id !== project.id));
+      if (activeProject?.id === project.id) {
+        resetProjectScopedState(true);
+        await refreshGlobalModels();
+      }
+      await refreshTrashProjects().catch(() => {});
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const restoreProjectFromCenter = async (project) => {
+    setBusy(true);
+    setError('');
+    try {
+      await restoreTrashProject(project.id);
+      await Promise.all([refreshProjects(), refreshTrashProjects()]);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const emptyTrashFromCenter = async () => {
+    if (!window.confirm('清空回收站后无法恢复，确定清空吗？')) return;
+    setBusy(true);
+    setError('');
+    try {
+      await emptyTrashProjects();
+      setTrashProjects([]);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (setup.loading) {
     return <div className="setup-loading" role="status">正在准备小说工作台…</div>;
   }
@@ -4785,8 +5050,11 @@ export default function App() {
     );
   }
 
-  return (
-    <div className={`app-shell ${centerView === 'foundation' ? 'foundation-focus' : ''}`}>
+  const compatibilityWorkspace = (
+    <div
+      className={`app-shell ${centerView === 'foundation' ? 'foundation-focus' : ''}`}
+      data-workspace-section={workspaceSection}
+    >
       <MobileWorkspaceChrome
         actionsOpen={mobileActionsOpen}
         connection={connection}
@@ -4804,6 +5072,7 @@ export default function App() {
               <Database size={17} />
               设定中心
             </button>
+            <ProjectModelSettingsLink iconSize={17} onClick={() => setMobileActionsOpen(false)} projectId={activeProject?.id} />
             {centerView === 'manuscript' ? (
               <button className="tool-button" disabled={!activeProject} onClick={() => openMobileToolDetail('manuscript')} type="button">
                 <BookOpen size={17} />
@@ -4860,6 +5129,41 @@ export default function App() {
             </button>
           </>
         )}
+      />
+      <ProjectWorkspaceHeader
+        connection={connection}
+        project={activeProject || projectOpen.project}
+        section={workspaceSection}
+        actions={<div className="toolbar-actions">
+          <StatusPill status={connection} />
+          <button
+            aria-pressed={centerView === 'foundation'}
+            className={`tool-button ${centerView === 'foundation' ? 'accent' : ''}`}
+            disabled={!activeProject || projectOpen.status === 'loading'}
+            onClick={openFoundationCenter}
+            type="button"
+          >
+            <Database size={16} />
+            设定中心
+          </button>
+          <ProjectModelSettingsLink projectId={activeProject?.id} />
+          <button className="tool-button" disabled={!activeProject || projectBusy} onClick={() => openProject(activeProject)} type="button">
+            <ListRestart size={16} />
+            刷新快照
+          </button>
+          <button className="tool-button" disabled={!activeProject || !projectRunning} onClick={pauseWriting} type="button">
+            <PauseCircle size={16} />
+            暂停
+          </button>
+          <button className="tool-button accent" disabled={!activeProject || projectBusy} onClick={resumeFromCurrentState} type="button">
+            <Play size={16} />
+            恢复
+          </button>
+          <button className="tool-button danger-ghost" disabled={!activeProject || projectBusy} onClick={openRollbackDialog} type="button">
+            <RotateCcw size={16} />
+            回退
+          </button>
+        </div>}
       />
       <nav className="mobile-workspace-nav" aria-label="移动端工作台导航">
         <button aria-expanded={projectDrawerOpen} onClick={() => {
@@ -5145,61 +5449,6 @@ export default function App() {
       ) : null}
 
       <main className="writing-pane">
-        <header className="workspace-toolbar">
-          <div className="workspace-heading">
-            <div className="eyebrow">当前项目</div>
-            <h2>{activeProject?.name || projectOpen.project?.name || ''}</h2>
-          </div>
-          <div className="toolbar-actions">
-            <StatusPill status={connection} />
-            <button
-              aria-pressed={centerView === 'foundation'}
-              className={`tool-button ${centerView === 'foundation' ? 'accent' : ''}`}
-              disabled={!activeProject || projectOpen.status === 'loading'}
-              onClick={openFoundationCenter}
-              type="button"
-            >
-              <Database size={16} />
-              设定中心
-            </button>
-            <button
-              className="tool-button"
-              disabled={!activeProject || projectBusy}
-              onClick={() => openProject(activeProject)}
-              type="button"
-            >
-              <ListRestart size={16} />
-                保存快照
-            </button>
-            <button
-              className="tool-button"
-              disabled={!activeProject || !projectRunning}
-              onClick={pauseWriting}
-              type="button"
-            >
-              <PauseCircle size={16} />
-              暂停
-            </button>
-            <button
-              className="tool-button accent"
-              disabled={!activeProject || projectBusy}
-              onClick={resumeFromCurrentState}
-              type="button"
-            >
-              <Play size={16} />
-              恢复
-            </button>
-            <button
-              className="tool-button danger-ghost"
-              disabled={!activeProject || projectBusy}
-              onClick={openRollbackDialog}
-              type="button"
-            >
-              <RotateCcw size={16} />
-              回退
-            </button>
-          </div>
-        </header>
 
         {projectOpen.status === 'loading' ? (
           <div className="project-open-status" role="status" aria-live="polite">
@@ -5223,6 +5472,7 @@ export default function App() {
           key={activeProject?.id || 'no-project-manuscript'}
           projectId={activeProject?.id || ''}
           onReturnToWriting={() => {
+            if (activeProject?.id) navigate(projectWorkspacePath(activeProject.id, 'write'));
             setCenterView('writing');
             if (sideView === 'manuscript') setSideView('status');
           }}
@@ -5237,7 +5487,10 @@ export default function App() {
               ? { projectId: '', tab: '', anchor: '', requestId: 0 }
               : current)}
           onDirtyChange={setFoundationDraftDirty}
-          onClose={() => setCenterView('writing')}
+          onClose={() => {
+            if (activeProject?.id) navigate(projectWorkspacePath(activeProject.id, 'write'));
+            setCenterView('writing');
+          }}
           onOpenReview={() => openFoundationReviewTab('overview')}
         /> : null}
         {pendingFoundationProject ? <FoundationProjectSwitchDialog
@@ -5361,8 +5614,20 @@ export default function App() {
       <aside
         className={`status-pane ${sideView === 'manuscript' ? 'manuscript-active' : ''} ${toolDrawerOpen ? 'mobile-open' : ''}`}
         data-mobile-view={mobileToolView}
+        data-tool-view={sideView}
         aria-label="创作与高级工具"
       >
+        <ProjectActionRailHeader title={workspaceSection === 'diagnostics' ? '运行诊断' : mobileToolLabel(sideView)}>
+          {workspaceSection === 'write' ? <>
+            <button className={`tool-button ${sideView === 'status' ? 'accent' : ''}`} onClick={() => openTool('status')} type="button">状态</button>
+            {globalCoCreateVisible ? <button className={`tool-button ${sideView === 'cocreate' ? 'accent' : ''}`} onClick={() => openTool('cocreate')} type="button">共创</button> : null}
+          </> : null}
+          {workspaceSection === 'diagnostics' ? <>
+            <button className={`tool-button ${sideView === 'diag' ? 'accent' : ''}`} onClick={() => openTool('diag')} type="button">诊断</button>
+            <button className={`tool-button ${sideView === 'cache' ? 'accent' : ''}`} onClick={() => openTool('cache')} type="button">缓存</button>
+            <button className={`tool-button ${sideView === 'backend' ? 'accent' : ''}`} onClick={() => openTool('backend')} type="button">后端</button>
+          </> : null}
+        </ProjectActionRailHeader>
         <MobileToolMenu coCreateVisible={globalCoCreateVisible} onClose={closeMobileDrawers} onSelectTool={openMobileToolDetail} />
         <div className="side-tabs" role="tablist" aria-label="工作台工具">
           <button aria-selected={sideView === 'status'} className={sideView === 'status' ? 'active' : ''} onClick={() => openTool('status')} role="tab" title="状态" type="button">
@@ -5635,6 +5900,492 @@ export default function App() {
       </aside>
     </div>
   );
+
+  const routeRecovery = resolveProjectRouteRecovery({
+    activeProject,
+    projectListState,
+    projectOpen,
+    projects,
+    route: resolvedRoute
+  });
+  const projectCenterVisible = resolvedRoute.kind === 'projects';
+  const routeRecoveryVisible = Boolean(routeRecovery);
+  const globalFeaturePath = resolvedRoute.kind === 'compatibility' && [
+    '/characters', '/worldbook', '/libraries/novels', '/libraries/profiles', '/dashboard'
+  ].includes(resolvedRoute.path) ? resolvedRoute.path : '';
+  const globalFeatureVisible = Boolean(globalFeaturePath);
+  const settingsScopeProject = projects.find((project) => project.id === settingsScopeProjectId) || null;
+
+  const applySettingsModelResponse = (data) => {
+    if (data?.models) setSettingsModelConfig(data.models);
+    if (data?.runtime) setSettingsRuntime(data.runtime);
+  };
+
+  const runSettingsModelMutation = async (request) => {
+    const projectId = settingsScopeProjectId;
+    setSettingsModelState({ status: 'saving', error: '' });
+    try {
+      const data = await request(projectId);
+      if (settingsScopeProjectIdRef.current !== projectId) return data;
+      applySettingsModelResponse(data);
+      setSettingsModelState({ status: 'done', error: '' });
+      return data;
+    } catch (err) {
+      if (settingsScopeProjectIdRef.current === projectId) {
+        setSettingsModelState({ status: 'error', error: err.message });
+      }
+      return null;
+    }
+  };
+
+  const switchSettingsModelRoute = (role, provider, model) => {
+    if (!role || !provider || !model) return;
+    void runSettingsModelMutation((projectId) => projectId
+      ? switchProjectModel(projectId, role, provider, model)
+      : switchGlobalModel(role, provider, model));
+  };
+
+  const inheritSettingsModelRoute = (role) => {
+    if (!role || role === 'default') return;
+    void runSettingsModelMutation((projectId) => projectId
+      ? inheritProjectModel(projectId, role)
+      : inheritGlobalModel(role));
+  };
+
+  const switchSettingsDefaultModel = (provider, model) => {
+    if (!provider || !model) return;
+    void runSettingsModelMutation((projectId) => projectId
+      ? switchProjectModel(projectId, 'default', provider, model)
+      : switchGlobalDefaultModel(provider, model));
+  };
+
+  const changeSettingsThinking = (role, level) => {
+    void runSettingsModelMutation((projectId) => projectId
+      ? setProjectThinking(projectId, role, level)
+      : setGlobalThinking(role, level));
+  };
+
+  const changeSettingsCoCreateTimeout = (seconds) => {
+    const value = Number(seconds);
+    if (!Number.isInteger(value) || value < 1 || value > 3600) {
+      setSettingsModelState({ status: 'error', error: '共创超时必须是 1-3600 秒之间的整数' });
+      return;
+    }
+    void runSettingsModelMutation((projectId) => projectId
+      ? setProjectCoCreateTimeout(projectId, value)
+      : setGlobalCoCreateTimeout(value));
+  };
+
+  const changeSettingsCoCreateMaxTokens = (tokens) => {
+    const value = Number(tokens);
+    if (!Number.isInteger(value) || value < 512 || value > 32768) {
+      setSettingsModelState({ status: 'error', error: '共创输出 tokens 必须是 512-32768 之间的整数' });
+      return;
+    }
+    void runSettingsModelMutation((projectId) => projectId
+      ? setProjectCoCreateMaxTokens(projectId, value)
+      : setGlobalCoCreateMaxTokens(value));
+  };
+
+  const changeSettingsRetrySettings = (modelAttempts, repairAttempts, budgetAttempts, auditAttempts) => {
+    void runSettingsModelMutation((projectId) => projectId
+      ? setProjectRetrySettings(projectId, modelAttempts, repairAttempts, budgetAttempts, auditAttempts)
+      : setGlobalRetrySettings(modelAttempts, repairAttempts, budgetAttempts, auditAttempts));
+  };
+
+  const deleteSettingsModelRoute = (provider, model) => {
+    if (!provider || !model) return;
+    void runSettingsModelMutation((projectId) => projectId
+      ? deleteProviderModel(projectId, provider, model)
+      : deleteGlobalProviderModel(provider, model));
+  };
+
+  const submitSettingsCustomModel = async (event) => {
+    event.preventDefault();
+    const payload = buildModelAddPayload(settingsCustomModel, settingsModelConfig);
+    const validationMessage = modelAddValidationMessage(settingsCustomModel, settingsModelConfig);
+    if (validationMessage) {
+      setSettingsModelState({ status: 'error', error: validationMessage });
+      setSettingsCustomModel((previous) => ({ ...previous, test_scope: 'editor', test_status: 'error', test_message: validationMessage }));
+      return;
+    }
+    const projectId = settingsScopeProjectId;
+    setSettingsModelState({ status: 'saving', error: '' });
+    setSettingsCustomModel((previous) => ({ ...previous, test_scope: 'editor', test_status: 'running', test_message: '正在保存模型...' }));
+    try {
+      const data = projectId ? await addProviderModel(projectId, payload) : await addGlobalProviderModel(payload);
+      if (settingsScopeProjectIdRef.current !== projectId) return;
+      const nextModels = data.models || settingsModelConfig;
+      applySettingsModelResponse(data);
+      setSettingsCustomModel(modelAddExistingProviderDefaults({
+        ...createCustomModelState(),
+        test_scope: 'editor',
+        test_status: 'ok',
+        test_message: settingsCustomModel.mode === 'existing' ? '配置已保存' : '模型已保存'
+      }, nextModels?.providers || [], payload.provider, payload.model));
+      setSettingsModelState({ status: 'done', error: '' });
+    } catch (err) {
+      if (settingsScopeProjectIdRef.current !== projectId) return;
+      setSettingsModelState({ status: 'error', error: err.message });
+      setSettingsCustomModel((previous) => ({ ...previous, test_scope: 'editor', test_status: 'error', test_message: err.message }));
+    }
+  };
+
+  const discoverSettingsCustomModels = async (payloadOverride = null, scope = 'editor') => {
+    const usesOverride = Boolean(payloadOverride);
+    const payload = usesOverride ? payloadOverride : buildModelAddPayload(settingsCustomModel, settingsModelConfig);
+    if (!payload.provider) return;
+    const projectId = settingsScopeProjectId;
+    setSettingsModelState({ status: 'saving', error: '' });
+    setSettingsCustomModel((previous) => ({ ...previous, test_scope: scope, test_status: 'running', test_message: '正在测试连接...' }));
+    try {
+      const data = projectId
+        ? await discoverProjectProviderModels(projectId, payload)
+        : await discoverGlobalProviderModels(payload);
+      if (settingsScopeProjectIdRef.current !== projectId) return;
+      const discovery = data.discovery || {};
+      const models = Array.isArray(discovery.models) ? discovery.models : [];
+      setSettingsCustomModel((previous) => ({
+        ...previous,
+        ...(usesOverride ? {} : { discovered_models: models, model: previous.model || models[0] || '' }),
+        test_scope: scope,
+        test_status: discovery.status || 'ok',
+        test_message: modelDiscoveryMessage(discovery, models)
+      }));
+      setSettingsModelState({ status: 'done', error: '' });
+    } catch (err) {
+      if (settingsScopeProjectIdRef.current !== projectId) return;
+      setSettingsModelState({ status: 'error', error: err.message });
+      setSettingsCustomModel((previous) => ({ ...previous, test_scope: scope, test_status: 'error', test_message: err.message }));
+    }
+  };
+
+  const testSettingsCustomModel = async (payloadOverride = null, scope = 'editor') => {
+    const payload = payloadOverride || buildModelAddPayload(settingsCustomModel, settingsModelConfig);
+    if (!payload.provider || !payload.model) return;
+    const projectId = settingsScopeProjectId;
+    setSettingsModelState({ status: 'saving', error: '' });
+    setSettingsCustomModel((previous) => ({ ...previous, test_scope: scope, test_status: 'running', test_message: '正在测试模型...' }));
+    try {
+      const data = projectId
+        ? await testProjectProviderModel(projectId, payload)
+        : await testGlobalProviderModel(payload);
+      if (settingsScopeProjectIdRef.current !== projectId) return;
+      const result = data.test || {};
+      setSettingsCustomModel((previous) => ({ ...previous, test_scope: scope, test_status: result.status || 'ok', test_message: result.message || '模型测试完成' }));
+      setSettingsModelState({ status: 'done', error: '' });
+    } catch (err) {
+      if (settingsScopeProjectIdRef.current !== projectId) return;
+      setSettingsModelState({ status: 'error', error: err.message });
+      setSettingsCustomModel((previous) => ({ ...previous, test_scope: scope, test_status: 'error', test_message: err.message }));
+    }
+  };
+
+  const startSettingsGrokLogin = async () => {
+    const projectId = settingsScopeProjectId;
+    const authWindow = openPendingGrokAuthWindow();
+    setSettingsModelState({ status: 'saving', error: '' });
+    setSettingsCustomModel((previous) => ({ ...previous, grok_message: '正在创建 Grok OAuth 登录会话...' }));
+    try {
+      const data = await startGrokLogin(projectId, settingsCustomModel.account_id, settingsCustomModel.account_name, true);
+      if (settingsScopeProjectIdRef.current !== projectId) return closeGrokAuthWindow(authWindow);
+      const login = data.login || null;
+      const authorizeURL = grokAuthorizeURL(login);
+      const browserOpened = Boolean(data.browser_opened || data.browserOpened);
+      const browserOpenError = String(data.browser_open_error || data.browserOpenError || '').trim();
+      const openedAuthorize = browserOpened ? (closeGrokAuthWindow(authWindow), true) : navigateGrokAuthWindow(authWindow, authorizeURL);
+      setSettingsCustomModel((previous) => ({ ...previous, grok_login: login, grok_status: grokLoggedIn(previous.grok_status) ? previous.grok_status : grokStatusFromLogin(login) || previous.grok_status, grok_message: grokLoginMessage(login) || grokOpenMessage(openedAuthorize, browserOpenError) }));
+      setSettingsModelState({ status: 'done', error: '' });
+    } catch (err) {
+      closeGrokAuthWindow(authWindow);
+      if (settingsScopeProjectIdRef.current !== projectId) return;
+      setSettingsModelState({ status: 'error', error: err.message });
+      setSettingsCustomModel((previous) => ({ ...previous, grok_message: err.message }));
+    }
+  };
+
+  const pollSettingsGrokLogin = async () => {
+    const projectId = settingsScopeProjectId;
+    try {
+      const data = await pollGrokLogin(projectId);
+      if (settingsScopeProjectIdRef.current !== projectId) return;
+      const login = data.login || null;
+      setSettingsCustomModel((previous) => ({ ...previous, grok_login: login, grok_status: grokLoggedIn(previous.grok_status) ? previous.grok_status : grokStatusFromLogin(login) || previous.grok_status, grok_message: grokLoginMessage(login) || (grokLoginDone(login) ? 'Grok OAuth 已完成' : '等待 Grok OAuth 回调') }));
+    } catch (err) {
+      if (settingsScopeProjectIdRef.current !== projectId) return;
+      setSettingsModelState({ status: 'error', error: err.message });
+      setSettingsCustomModel((previous) => ({ ...previous, grok_message: err.message }));
+    }
+  };
+
+  const completeSettingsGrokLogin = async () => {
+    const callback = String(settingsCustomModel.callback_input || '').trim();
+    if (!callback) {
+      setSettingsCustomModel((previous) => ({ ...previous, grok_message: '请粘贴 callback URL、query string 或一次性 code' }));
+      return;
+    }
+    const projectId = settingsScopeProjectId;
+    try {
+      const data = await completeGrokLogin(projectId, callback);
+      if (settingsScopeProjectIdRef.current !== projectId) return;
+      setSettingsCustomModel((previous) => ({ ...previous, callback_input: '', grok_status: data.status || null, grok_message: grokLoggedIn(data.status) ? 'Grok OAuth 已登录' : grokAuthSummary(data.status) }));
+    } catch (err) {
+      if (settingsScopeProjectIdRef.current !== projectId) return;
+      setSettingsModelState({ status: 'error', error: err.message });
+      setSettingsCustomModel((previous) => ({ ...previous, grok_message: err.message }));
+    }
+  };
+
+  const refreshSettingsGrokStatus = async () => {
+    const projectId = settingsScopeProjectId;
+    try {
+      const data = await getGrokLoginStatus(projectId, settingsCustomModel.account_id);
+      if (settingsScopeProjectIdRef.current !== projectId) return;
+      setSettingsCustomModel((previous) => ({ ...previous, grok_status: data.status || null, grok_message: grokAuthSummary(data.status) }));
+    } catch (err) {
+      if (settingsScopeProjectIdRef.current !== projectId) return;
+      setSettingsModelState({ status: 'error', error: err.message });
+      setSettingsCustomModel((previous) => ({ ...previous, grok_message: err.message }));
+    }
+  };
+
+  const refreshSettingsCodexStatus = async () => {
+    const projectId = settingsScopeProjectId;
+    try {
+      const data = await getCodexAuthStatus(projectId, settingsCustomModel.auth_file);
+      if (settingsScopeProjectIdRef.current !== projectId) return;
+      setSettingsCustomModel((previous) => ({ ...previous, codex_status: data.status || null, codex_message: codexAuthSummary(data.status) }));
+    } catch (err) {
+      if (settingsScopeProjectIdRef.current !== projectId) return;
+      setSettingsModelState({ status: 'error', error: err.message });
+      setSettingsCustomModel((previous) => ({ ...previous, codex_message: err.message }));
+    }
+  };
+
+  const uploadSettingsCodexAuth = async (event) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+    setSettingsModelState({ status: 'saving', error: '' });
+    setSettingsCustomModel((previous) => ({ ...previous, codex_message: '正在上传并校验 auth.json...' }));
+    try {
+      const data = await uploadCodexAuthFile(file);
+      setSettingsCustomModel((previous) => ({ ...previous, auth_file: data.auth_file || '', auth_file_name: data.file?.name || file.name, codex_status: data.status || null, codex_message: `auth.json 上传成功；${codexAuthSummary(data.status)}`, test_status: 'idle', test_message: '' }));
+      setSettingsModelState({ status: 'done', error: '' });
+    } catch (err) {
+      setSettingsModelState({ status: 'error', error: err.message });
+      setSettingsCustomModel((previous) => ({ ...previous, codex_message: err.message }));
+    } finally {
+      input.value = '';
+    }
+  };
+
+  const refreshSettingsBackend = async () => {
+    const projectId = settingsBackendProjectId;
+    if (!projectId) return;
+    setSettingsBackendState({ status: 'loading', error: '' });
+    try {
+      const data = await getBackendStatus(projectId);
+      if (settingsBackendProjectIdRef.current !== projectId) return;
+      setSettingsBackendStatus(data.backend || null);
+      setSettingsBackendState({ status: 'done', error: '' });
+    } catch (err) {
+      if (settingsBackendProjectIdRef.current !== projectId) return;
+      setSettingsBackendState({ status: 'error', error: err.message });
+    }
+  };
+
+  const testSettingsBackend = async () => {
+    const projectId = settingsBackendProjectId;
+    if (!projectId) return;
+    setSettingsBackendState({ status: 'testing', error: '' });
+    try {
+      const data = await testBackend(projectId);
+      if (settingsBackendProjectIdRef.current !== projectId) return;
+      setSettingsBackendStatus(data.backend || null);
+      setSettingsBackendState({ status: 'done', error: '' });
+    } catch (err) {
+      if (settingsBackendProjectIdRef.current !== projectId) return;
+      setSettingsBackendState({ status: 'error', error: err.message });
+    }
+  };
+
+  const modelSettingsPanel = (view) => (
+    <ModelPanel
+      activeProject={settingsScopeProject}
+      runtime={settingsRuntime}
+      modelConfig={settingsModelConfig}
+      customModel={settingsCustomModel}
+      setCustomModel={setSettingsCustomModel}
+      busy={settingsModelState.status === 'loading' || settingsModelState.status === 'saving'}
+      view={view}
+      onSwitchDefault={switchSettingsDefaultModel}
+      onSwitch={switchSettingsModelRoute}
+      onInherit={inheritSettingsModelRoute}
+      onThinking={changeSettingsThinking}
+      onCoCreateTimeout={changeSettingsCoCreateTimeout}
+      onCoCreateMaxTokens={changeSettingsCoCreateMaxTokens}
+      onRetrySettings={changeSettingsRetrySettings}
+      onDeleteModel={deleteSettingsModelRoute}
+      onAddCustom={submitSettingsCustomModel}
+      onTestConnection={discoverSettingsCustomModels}
+      onTestModel={testSettingsCustomModel}
+      onStartGrokLogin={startSettingsGrokLogin}
+      onPollGrokLogin={pollSettingsGrokLogin}
+      onCompleteGrokLogin={completeSettingsGrokLogin}
+      onRefreshGrokStatus={refreshSettingsGrokStatus}
+      onRefreshCodexStatus={refreshSettingsCodexStatus}
+      onUploadCodexAuth={uploadSettingsCodexAuth}
+    />
+  );
+  const settingsWorkspace = settingsVisible ? (
+    <SettingsCenter scopeProjectId={settingsScopeProjectId} section={settingsSection}>
+      {settingsModelState.error && ['providers', 'models'].includes(settingsSection) ? <div className="settings-message error settings-global-error" role="alert">{settingsModelState.error}</div> : null}
+      {settingsSection === 'providers' ? <>
+        <SettingsScopeSelector selectedProjectId={settingsScopeProjectId} onSelect={(projectId) => {
+          setSettingsScopeProjectId(projectId);
+          navigate(settingsSectionPath(settingsSection, projectId));
+        }} projects={projects} />
+        {modelSettingsPanel('providers')}
+      </> : null}
+      {settingsSection === 'models' ? <>
+        <SettingsScopeSelector selectedProjectId={settingsScopeProjectId} onSelect={(projectId) => {
+          setSettingsScopeProjectId(projectId);
+          navigate(settingsSectionPath(settingsSection, projectId));
+        }} projects={projects} />
+        {modelSettingsPanel('models')}
+      </> : null}
+      {settingsSection === 'context' ? <ContextSettings activeProject={activeProject} projects={projects} /> : null}
+      {settingsSection === 'prompts' ? <GlobalPromptSettings /> : null}
+      {settingsSection === 'schedule' ? <ResumeSchedulePanel schedule={resumeSchedule} setSchedule={setResumeScheduleState} onRefresh={loadResumeSchedule} onSave={saveResumeSchedule} /> : null}
+      {settingsSection === 'backend' ? <>
+        <SettingsScopeSelector selectedProjectId={settingsBackendProjectId} allowGlobal={false} onSelect={setSettingsBackendProjectId} projects={projects} />
+        {settingsBackendState.error ? <div className="settings-message error" role="alert">{settingsBackendState.error}</div> : null}
+        {settingsBackendProjectId ? <BackendPanel backend={settingsBackendStatus} busy={['loading', 'testing'].includes(settingsBackendState.status)} onRefresh={refreshSettingsBackend} onTest={testSettingsBackend} /> : <div className="settings-empty">请选择一个项目以查看后端状态</div>}
+      </> : null}
+    </SettingsCenter>
+  ) : null;
+  const globalFeatureWorkspace = globalFeaturePath ? (
+    <>
+      {globalFeaturePath === '/characters' ? <KnowledgeFoundationPage kind="characters" onRefreshProjects={refreshProjects} projects={projects} projectsError={projectListState.error} projectsLoading={projectListState.loading} /> : null}
+      {globalFeaturePath === '/worldbook' ? <KnowledgeFoundationPage kind="worldbook" onRefreshProjects={refreshProjects} projects={projects} projectsError={projectListState.error} projectsLoading={projectListState.loading} /> : null}
+      {globalFeaturePath === '/libraries/novels' ? <LibraryCenter kind="novels" onRefreshProjects={refreshProjects} projects={projects} projectsError={projectListState.error} projectsLoading={projectListState.loading} /> : null}
+      {globalFeaturePath === '/libraries/profiles' ? <LibraryCenter kind="profiles" onRefreshProjects={refreshProjects} projects={projects} projectsError={projectListState.error} projectsLoading={projectListState.loading} /> : null}
+      {globalFeaturePath === '/dashboard' ? <Dashboard projects={projects} projectsLoading={projectListState.loading} /> : null}
+    </>
+  ) : null;
+  const selectRouteRecoveryProject = (project) => {
+    if (routeRecovery?.kind === 'missing') {
+      navigate(projectWorkspacePath(project.id));
+      return;
+    }
+    void openProject(project);
+  };
+  const retryRouteRecovery = () => {
+    if (routeRecovery?.retryProjectId) {
+      const project = projects.find((item) => item.id === routeRecovery.retryProjectId);
+      if (project) return openProject(project);
+    }
+    return refreshProjects();
+  };
+  return (
+    <AppShell
+      activeProject={activeProject || projectOpen.project}
+      connection={connection}
+      onOpenProjectActions={resolvedRoute.kind === 'workspace' ? openMobileActions : undefined}
+      pathname={location.pathname}
+    >
+      <div className={`shell-route-surface ${projectCenterVisible ? '' : 'is-hidden'}`}>
+        <ProjectCenter
+          busy={busy}
+          error={error}
+          onClone={cloneProjectFromCenter}
+          onCreate={createProjectFromCenter}
+          onEmptyTrash={emptyTrashFromCenter}
+          onOpen={(project) => navigate(projectWorkspacePath(project.id))}
+          onRefresh={refreshProjects}
+          onRename={renameProjectFromCenter}
+          onRestore={restoreProjectFromCenter}
+          onTrash={trashProjectFromCenter}
+          onTrashOpen={refreshTrashProjects}
+          projectsError={projectListState.error}
+          projectsLoading={projectListState.loading}
+          projects={projects}
+          trashError={trashListState.error}
+          trashLoading={trashListState.loading}
+          trashProjects={trashProjects}
+        />
+      </div>
+      <div className={`shell-route-surface ${routeRecoveryVisible ? '' : 'is-hidden'}`}>
+        {routeRecovery ? (
+          <ProjectRouteRecovery
+            error={routeRecovery.error}
+            kind={routeRecovery.kind}
+            loading={routeRecovery.loading}
+            onBack={() => navigate('/projects')}
+            onRetry={retryRouteRecovery}
+            onSelect={selectRouteRecoveryProject}
+            projectId={routeRecovery.projectId}
+            projects={projects}
+          />
+        ) : null}
+      </div>
+      <div className={`shell-route-surface ${settingsVisible ? '' : 'is-hidden'}`}>
+        {settingsWorkspace}
+      </div>
+      <div className={`shell-route-surface knowledge-route-surface ${globalFeatureVisible ? '' : 'is-hidden'}`}>
+        {globalFeatureWorkspace}
+      </div>
+      <div className={`shell-route-surface compatibility-workspace ${projectCenterVisible || routeRecoveryVisible || settingsVisible || globalFeatureVisible ? 'is-hidden' : ''}`}>
+        {compatibilityWorkspace}
+      </div>
+    </AppShell>
+  );
+}
+
+export function applyWorkspaceRoute(section, controls) {
+  const { mobile = false, setCenterView, setSideView, setToolDrawerOpen } = controls;
+  const route = workspaceStateForSection(section);
+  setCenterView(route.centerView);
+  setSideView(route.sideView);
+  setToolDrawerOpen(mobile && isMobileTaskSection(section));
+}
+
+export function applyCompatibilityRoute(path, controls) {
+  const { setCenterView, setSideView, setToolDrawerOpen } = controls;
+  const sideView = {
+    '/settings/providers': 'models',
+    '/settings/models': 'models',
+    '/settings/context': 'cache',
+    '/settings/prompts': 'models',
+    '/settings/schedule': 'schedule',
+    '/settings/backend': 'backend'
+  }[path];
+  if (sideView) {
+    setCenterView('writing');
+    setSideView(sideView);
+    setToolDrawerOpen(false);
+    return;
+  }
+}
+
+export function resolveProjectRouteRecovery({ projectListState, projectOpen, projects, route }) {
+  if (route.kind !== 'workspace') return null;
+  if (projectListState.loading && !projectListState.loaded) {
+    return { kind: 'missing', loading: true, error: '', projectId: route.projectId, retryProjectId: '' };
+  }
+  const projectExists = projects.some((project) => project.id === route.projectId);
+  const projectFailed = projectOpen.status === 'error' && projectOpen.project?.id === route.projectId;
+  if (!projectExists || projectListState.error || projectFailed) {
+    return {
+      kind: 'missing',
+      loading: false,
+      error: projectFailed ? projectOpen.error : projectListState.error,
+      projectId: route.projectId,
+      retryProjectId: projectFailed ? route.projectId : ''
+    };
+  }
+  return null;
 }
 
 function hasCoCreateWorkspaceContent(coCreate) {
@@ -9469,6 +10220,7 @@ function ModelPanel({
   customModel,
   setCustomModel,
   busy,
+  view = 'all',
   onSwitchDefault,
   onSwitch,
   onInherit,
@@ -9634,8 +10386,11 @@ function ModelPanel({
   const canTestEditorConnection = Boolean(providerEditorID);
   const canTestEditorModel = Boolean(providerEditorID && String(customModel.model || '').trim());
   const editorTestMessage = customModel.test_message;
+  const showModelRouting = view !== 'providers';
+  const showProviderEditor = view !== 'models';
   return (
     <div className="side-content">
+      {showModelRouting ? <>
       <section>
         <div className="section-title">
           <Settings size={17} />
@@ -9864,7 +10619,8 @@ function ModelPanel({
           </div>
         )}
       </section>
-      <form className="custom-model-form" onSubmit={onAddCustom}>
+      </> : null}
+      {showProviderEditor ? <form className="custom-model-form" onSubmit={onAddCustom}>
         <div className="section-title">
           <Settings size={17} />
           <span>配置模型</span>
@@ -10364,7 +11120,7 @@ function ModelPanel({
             {customModel.mode === 'existing' ? '保存配置' : '保存模型'}
           </button>
         </div>
-      </form>
+      </form> : null}
       {modelConfig?.thinking_rule ? <div className="success-note">{modelConfig.thinking_rule}</div> : null}
     </div>
   );

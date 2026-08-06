@@ -213,14 +213,14 @@ opennovel
 
 ### Web UI（唯一交互界面）
 
-直接运行 `opennovel` 会在 `http://127.0.0.1:9898` 启动本地 Web 并自动打开浏览器。发布包里的 Go 主程序已经嵌入 Web 前端，并与独立的 `expansion-auditor`、`manuscript-completion-auditor`（Windows 使用同名 `.exe`）一起安装在同一目录；两类审核私钥只存在于各自独立组件。缺少或无法启动对应组件时，相关扩写或完本复审保持 pending 并 fail closed，不会静默跳过审核；其他不依赖该审核器的项目功能仍可使用。
+直接运行 `opennovel` 会在 `http://127.0.0.1:9999` 启动本地 Web 并自动打开浏览器。发布包里的 Go 主程序已经嵌入 Web 前端，并与独立的 `expansion-auditor`、`manuscript-completion-auditor`（Windows 使用同名 `.exe`）一起安装在同一目录；两类审核私钥只存在于各自独立组件。缺少或无法启动对应组件时，相关扩写或完本复审保持 pending 并 fail closed，不会静默跳过审核；其他不依赖该审核器的项目功能仍可使用。
 
 `opennovel web` 是服务器部署入口，默认不会打开浏览器；只有显式传入 `--open` 才会打开。
 
 ```bash
 opennovel web
 opennovel web --open
-opennovel web --host 0.0.0.0 --port 9898
+opennovel web --host 0.0.0.0 --port 9999
 opennovel web --runtime-root D:\OpenNovel\novels-preview
 ```
 
@@ -228,9 +228,9 @@ opennovel web --runtime-root D:\OpenNovel\novels-preview
 
 ```powershell
 .\restart-web.cmd
-.\restart-web.cmd -Port 9898
-.\restart-web.cmd -Port 9898 -RuntimeRoot "$env:USERPROFILE\.opennovel\novels-preview"
-.\restart-web.cmd -Port 9898 -StopPorts 9898,9901
+.\restart-web.cmd -Port 9999
+.\restart-web.cmd -Port 9999 -RuntimeRoot "$env:USERPROFILE\.opennovel\novels-preview"
+.\restart-web.cmd -Port 9999 -StopPorts 9999,9901
 ```
 
 这个脚本会按相对路径定位仓库，先构建 `internal/entry/web/ui`，再构建 Go 二进制到临时文件；构建成功后才停止旧端口、覆盖 `opennovel.exe`、启动 Web 并检查 `/api/runtime` 和项目列表。运行时根目录解析顺序是：`-RuntimeRoot`、`OPENNOVEL_WEB_RUNTIME_ROOT`、`OPENNOVEL_RUNTIME_ROOT`、已存在的 `~/.opennovel/novels-preview`、最后退回 CLI 默认配置。后续开发重启请统一使用这个脚本，快速复用现有构建时可加 `-NoBuild`。
@@ -272,30 +272,33 @@ Web 运行时根目录必须在仓库外；如果指到仓库目录或其子目�
 
 ### Docker
 
-Docker 镜像默认以 Web-only 模式监听 `0.0.0.0:9898`，适合部署在服务器或 NAS。配置和作品目录建议挂载到宿主机：
+Docker 镜像默认以 Web-only 模式监听 `0.0.0.0:9999`，适合部署在服务器或 NAS。配置和作品目录建议挂载到宿主机：
 
 ```bash
 mkdir -p config workspace authority
 
 # Web 服务
-docker run --rm -p 9898:9898 \
-  -v "$PWD/config:/home/opennovel/.opennovel" \
+docker run --rm -p 9999:9999 \
+  -v "$PWD/config:/home/ainovel/.ainovel" \
   -v "$PWD/workspace:/workspace" \
-  -v "$PWD/authority:/var/lib/opennovel" \
+  -v "$PWD/authority:/var/lib/ainovel" \
   ghcr.io/while4234/opennovel:latest
 
 # 严格非交互的 headless 自动化
 docker run --rm \
-  -v "$PWD/config:/home/opennovel/.opennovel" \
+  -v "$PWD/config:/home/ainovel/.ainovel" \
   -v "$PWD/workspace:/workspace" \
-  -v "$PWD/authority:/var/lib/opennovel" \
+  -v "$PWD/authority:/var/lib/ainovel" \
   -v "$PWD/answers.json:/workspace/answers.json:ro" \
   ghcr.io/while4234/opennovel:latest \
   --headless --prompt "写一本东方玄幻长篇，主角从边陲小城起步" \
   --answers-file /workspace/answers.json
 ```
 
-镜像固定以 UID/GID `65532` 运行，并设置 `HOME=/home/opennovel`；因此普通 provider 配置必须挂载到 `/home/opennovel/.opennovel`，代码会从该 HOME 下的 `config.json` 读取。这个可写配置卷与 root 管理的 `/var/lib/opennovel` authority 卷严格分离：后者丢失、未 bootstrap 或被普通 runtime 重建时，发布与完稿审核会 fail closed。
+The container keeps writable provider configuration at `/home/ainovel/.ainovel`
+and the administrator-managed authority volume at `/var/lib/ainovel`.
+
+镜像固定以 UID/GID `65532` 运行，并设置 `HOME=/home/ainovel`；因此普通 provider 配置必须挂载到 `/home/ainovel/.ainovel`，代码会从该 HOME 下的 `config.json` 读取。这个可写配置卷与 root 管理的 `/var/lib/ainovel` authority 卷严格分离：后者丢失、未 bootstrap 或被普通 runtime 重建时，发布与完稿审核会 fail closed。
 
 也可以用 Compose：
 
@@ -835,15 +838,15 @@ powershell -NoProfile -File .\scripts\e2e\manuscript-clone-validation.ps1 -Confi
 
 ```bash
 docker run --rm -u 0 \
-  -v "$PWD/authority:/var/lib/opennovel" alpine:3.22 \
-  sh -c 'install -d -o root -g root -m 0755 /var/lib/opennovel /var/lib/opennovel/publication-authority-installation-v1 && install -d -o 65532 -g 65532 -m 0700 /var/lib/opennovel/publication-authority-v1'
+  -v "$PWD/authority:/var/lib/ainovel" alpine:3.22 \
+  sh -c 'install -d -o root -g root -m 0755 /var/lib/ainovel /var/lib/ainovel/publication-authority-installation-v1 && install -d -o 65532 -g 65532 -m 0700 /var/lib/ainovel/publication-authority-v1'
 docker run --rm \
-  -v "$PWD/authority:/var/lib/opennovel" \
+  -v "$PWD/authority:/var/lib/ainovel" \
   --user 0 ghcr.io/while4234/opennovel:latest authority init
 # bootstrap 完成后仅把可写 root 交给镜像运行 UID；installation sibling 保持 root-owned
 docker run --rm --entrypoint sh -u 0 \
-  -v "$PWD/authority:/var/lib/opennovel" alpine:3.22 \
-  -c 'chown -R 65532:65532 /var/lib/opennovel/publication-authority-v1 && chmod 0700 /var/lib/opennovel/publication-authority-v1'
+  -v "$PWD/authority:/var/lib/ainovel" alpine:3.22 \
+  -c 'chown -R 65532:65532 /var/lib/ainovel/publication-authority-v1 && chmod 0700 /var/lib/ainovel/publication-authority-v1'
 ```
 
 Windows 原生安装应从提升的管理员 PowerShell 运行 `scripts/install-authority-windows.ps1 -ServiceAccount <account>`；脚本在 `C:\ProgramData\OpenNovel` 建立受保护 DACL。普通服务账户只能修改 root 内的子工件并读取 installation anchor，不拥有 parent/root/installation 对象的删除、改 DACL 或改 owner 权限。

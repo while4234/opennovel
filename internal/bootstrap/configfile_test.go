@@ -45,6 +45,20 @@ func TestMergeConfigScheduledResumeFields(t *testing.T) {
 	}
 }
 
+func TestMergeConfigDoesNotAllowProjectGlobalPromptOverrides(t *testing.T) {
+	base := Config{GlobalPrompts: map[string]string{"gpt": "global prompt"}}
+	overlay := Config{GlobalPrompts: map[string]string{"gpt": "project prompt", "kimi": "project Kimi"}}
+
+	merged := MergeConfig(base, overlay)
+
+	if got := merged.GlobalPrompts["gpt"]; got != "global prompt" {
+		t.Fatalf("merged GPT prompt = %q, want global prompt", got)
+	}
+	if _, ok := merged.GlobalPrompts["kimi"]; ok {
+		t.Fatal("project overlay introduced a global Kimi prompt")
+	}
+}
+
 // writeGlobal 在隔离的 HOME 下写入全局配置，并返回该 HOME。
 func writeGlobal(t *testing.T, content string) string {
 	t.Helper()

@@ -24,11 +24,12 @@ export function FoundationCenter({
   onClose,
   onOpenReview,
   onDirtyChange,
+  initialTab = '',
   requestedNavigation,
   onNavigationHandled
 }) {
   const [state, dispatch] = useReducer(foundationReducer, projectId, createFoundationState);
-  const [tab, setTab] = useState('overview');
+  const [tab, setTab] = useState(() => validFoundationTab(initialTab) ? initialTab : legacyFoundationTab());
   const [characterSubmitting, setCharacterSubmitting] = useState(false);
   const [characterAgentOpenRequestId, setCharacterAgentOpenRequestId] = useState(0);
   const versionRef = useRef(0);
@@ -74,11 +75,11 @@ export function FoundationCenter({
 
   useEffect(() => {
     versionRef.current += 1;
-    setTab(legacyFoundationTab());
+    setTab(validFoundationTab(initialTab) ? initialTab : legacyFoundationTab());
     applyKeyRef.current = { previewID: '', key: '' };
     load();
     return () => { versionRef.current += 1; abortRef.current?.abort(); characterAbortRef.current?.abort(); };
-  }, [projectId, load]);
+  }, [initialTab, projectId, load]);
 
   useEffect(() => {
     if (!state.server || !state.draft) return;
@@ -170,6 +171,9 @@ export function FoundationCenter({
   }, [state.status, state.server?.mode, onOpenReview]);
 
   if (!projectId) return <div className="foundation-center empty-state">请先打开项目。</div>;
+  if (state.projectId !== projectId) {
+    return <div className="foundation-center foundation-loading" aria-live="polite" role="status">正在切换项目设定…</div>;
+  }
   if (state.status === 'failed' && (!state.server || !state.draft)) {
     return <FoundationLoadFailure error={state.error} onRetry={() => load()} />;
   }
@@ -321,7 +325,7 @@ export function FoundationCenter({
   };
 
   return <div className="foundation-center">
-    <header className="foundation-header"><div><span className="eyebrow">StoryFoundation</span><h1>设定中心</h1><p>统一管理原创与改编的目标故事设定；SourceFoundation 始终只读。</p></div><button className="tool-button" type="button" onClick={requestClose}>返回创作</button></header>
+    <header className="foundation-header"><div><span className="eyebrow">StoryFoundation</span><h1>设定中心</h1><p>统一管理原创与改编的目标故事设定；SourceFoundation 始终只读。</p></div>{onClose ? <button className="tool-button" type="button" onClick={requestClose}>返回创作</button> : null}</header>
     <div className="foundation-state-strip" aria-live="polite" role="status"><strong>{statusLabel(state.status)}</strong><span>target rev {state.server.baseRevision}</span>{state.server.readonlyReason ? <span>只读原因：{foundationReadonlyReasonLabel(state.server.readonlyReason)}</span> : null}</div>
     {characterConfirmationRequired ? <section className="foundation-next-action" aria-labelledby="foundation-next-action-title">
       <div><strong id="foundation-next-action-title">角色卡审核已通过，等待你的确认</strong><span>候选角色尚未发布。确认后才会写入 StoryFoundation，并继续补全关系、世界规则和后续规划。</span></div>
@@ -400,6 +404,10 @@ function legacyFoundationTab() {
   const requested = new URLSearchParams(location?.search || '').get('foundation_tab') || String(location?.hash || '').replace(/^#/, '');
   if (requested === 'core' || requested === 'all-characters' || requested === 'characters') return 'characters';
   return tabs.some(([id]) => id === requested) ? requested : 'overview';
+}
+
+function validFoundationTab(tab) {
+  return tabs.some(([id]) => id === tab);
 }
 
 function CloseDraftDialog({ trigger, onCancel, onConfirm }) {

@@ -22,6 +22,7 @@ import (
 
 	"github.com/voocel/ainovel-cli/assets"
 	"github.com/voocel/ainovel-cli/internal/bootstrap"
+	"github.com/voocel/ainovel-cli/internal/globalprompt"
 	"github.com/voocel/ainovel-cli/internal/host"
 	storepkg "github.com/voocel/ainovel-cli/internal/store"
 )
@@ -50,6 +51,7 @@ type Server struct {
 	schedulerMu      sync.Mutex
 	schedulerCancel  context.CancelFunc
 	schedulerDone    chan struct{}
+	configSaver      func(bootstrap.Config) error
 }
 
 func Run(ctx context.Context, cfg bootstrap.Config, bundle assets.Bundle, opts Options) error {
@@ -128,6 +130,10 @@ func Run(ctx context.Context, cfg bootstrap.Config, bundle assets.Bundle, opts O
 }
 
 func NewServer(cfg bootstrap.Config, bundle assets.Bundle, runtimeRoot string) *Server {
+	if err := globalprompt.ReplaceOverrides(cfg.GlobalPrompts); err != nil {
+		slog.Warn("ignoring invalid global prompt overrides", "module", "web", "err", err)
+		_ = globalprompt.ReplaceOverrides(nil)
+	}
 	store := NewProjectStore(runtimeRoot)
 	s := &Server{
 		cfg:              cfg,
@@ -137,6 +143,7 @@ func NewServer(cfg bootstrap.Config, bundle assets.Bundle, runtimeRoot string) *
 		libraries:        NewLibraryService(runtimeRoot),
 		static:           StaticFS(),
 		sourceDownloader: newSimulationSourceDownloader(runtimeRoot),
+		configSaver:      saveWebConfig,
 	}
 	s.sessions = NewSessionManager(cfg, bundle, store)
 	s.resumeScheduler = NewResumeScheduler(runtimeRoot, ResumeSchedulerDeps{
@@ -168,6 +175,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/libraries/simulation/upload", s.handleSimulationLibraryUpload)
 	mux.HandleFunc("/api/libraries/novels", s.handleNovelLibrary)
 	mux.HandleFunc("/api/models", s.handleModels)
+	mux.HandleFunc("/api/models/global-prompts", s.handleGlobalPrompts)
+	mux.HandleFunc("/api/models/global-prompts/", s.handleGlobalPrompt)
 	mux.HandleFunc("/api/models/default", s.handleDefaultModel)
 	mux.HandleFunc("/api/models/switch", s.handleModelSwitch)
 	mux.HandleFunc("/api/models/thinking", s.handleGlobalModelThinking)

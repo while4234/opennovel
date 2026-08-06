@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [int]$Port = 9898,
+    [int]$Port = 9999,
 
     [Alias("Host")]
     [string]$BindAddress = "127.0.0.1",

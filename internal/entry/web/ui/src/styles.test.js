@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 const css = readFileSync(new URL('./styles.css', import.meta.url), 'utf8');
 const mobileChromeCss = readFileSync(new URL('./components/MobileWorkspaceChrome.css', import.meta.url), 'utf8');
+const workspaceCss = readFileSync(new URL('./workspace/workspace.css', import.meta.url), 'utf8');
 const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
 describe('ui styles', () => {
@@ -11,13 +12,20 @@ describe('ui styles', () => {
     expect(css).toMatch(/@media \(max-width:\s*767px\)[\s\S]*?grid-template-rows:[\s\S]*?env\(safe-area-inset-top\)[\s\S]*?env\(safe-area-inset-bottom\)/);
     expect(css).toMatch(/@media \(max-width:\s*1100px\)[\s\S]*?\.mobile-workspace-nav\s*{/);
     expect(mobileChromeCss).toMatch(/@media \(max-width:\s*767px\)/);
+    expect(mobileChromeCss).toContain('(max-height: 520px) and (max-width: 1024px)');
   });
 
   it('keeps the phone composer and navigation reachable with touch-sized controls', () => {
     expect(css).toMatch(/@media \(max-width:\s*767px\)[\s\S]*?\.composer\s*{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto;/);
     expect(css).toMatch(/\.icon-button,[\s\S]*?\.tool-button,[\s\S]*?min-height:\s*44px;/);
     expect(mobileChromeCss).toMatch(/\.mobile-phone-bottom-nav button\s*{[^}]*min-height:\s*50px;/s);
-    expect(mobileChromeCss).toMatch(/padding:\s*5px 12px max\(5px,\s*env\(safe-area-inset-bottom\)\)/);
+    expect(mobileChromeCss).toContain('padding: 5px max(12px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left))');
+  });
+
+  it('pins compact navigation to the viewport without covering the composer', () => {
+    expect(mobileChromeCss).toMatch(/\.mobile-phone-bottom-nav\s*{[^}]*left:\s*0;[^}]*right:\s*0;[^}]*width:\s*100%;[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\);/s);
+    expect(workspaceCss).toMatch(/\.compatibility-workspace \.writing-pane\s*{[^}]*width:\s*100%;[^}]*max-width:\s*100vw;[^}]*min-width:\s*0;[^}]*padding:[^;]*var\(--mobile-bottom-nav-height\)/s);
+    expect(workspaceCss).toMatch(/\.compatibility-workspace \.composer\s*{[^}]*width:\s*100%;[^}]*max-width:\s*100%;[^}]*min-width:\s*0;/s);
   });
 
   it('uses one phone workbench scroll surface and full-screen tool details', () => {

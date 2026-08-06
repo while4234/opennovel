@@ -6,7 +6,7 @@
   display: none;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-height: 520px) and (max-width: 1024px) {
   .mobile-phone-topbar {
     z-index: 70;
     display: grid;
@@ -87,12 +87,17 @@
   .mobile-phone-bottom-nav {
     z-index: 70;
     display: grid;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100vw;
     grid-column: 1;
     grid-row: 3;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 4px;
     min-width: 0;
-    padding: 5px 12px max(5px, env(safe-area-inset-bottom));
+    box-sizing: border-box;
+    padding: 5px max(12px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
     border-top: 1px solid var(--line);
     background: color-mix(in srgb, var(--surface-solid) 96%, transparent);
     backdrop-filter: blur(18px);
@@ -101,6 +106,7 @@
   .mobile-phone-bottom-nav button {
     display: grid;
     min-width: 0;
+    width: 100%;
     min-height: 50px;
     place-items: center;
     align-content: center;

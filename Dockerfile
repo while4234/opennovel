@@ -63,9 +63,9 @@ RUN addgroup -g 65532 ainovel && \
     adduser -D -h /home/ainovel -u 65532 -G ainovel ainovel && \
     install -d -o 65532 -g 65532 -m 0700 /home/ainovel/.ainovel
 
-EXPOSE 9898
+EXPOSE 9999
 
 USER 65532:65532
 
 ENTRYPOINT ["ainovel-cli"]
-CMD ["web", "--host", "0.0.0.0", "--port", "9898"]
+CMD ["web", "--host", "0.0.0.0", "--port", "9999"]

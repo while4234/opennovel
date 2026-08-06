@@ -3,8 +3,10 @@ package store
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/voocel/ainovel-cli/internal/domain"
 )
@@ -169,6 +171,166 @@ func TestApplyCoreCastPreservesNonCoreFoundationContent(t *testing.T) {
 	result := domain.ApplyCoreCastToFoundation(foundation, contract)
 	if len(result.Characters) != 2 || len(result.Relationships) != 1 {
 		t.Fatalf("core cast publish dropped supporting content: %+v", result)
+	}
+}
+
+func TestCharacterCardStoreDiscardCandidateCASFencesRevisionAndDigest(t *testing.T) {
+	dir := t.TempDir()
+	foundation := legacyCharacterCardFoundation(domain.StoryFoundationSchemaVersion)
+	foundation.Revision = 1
+	binding, err := domain.CharacterCardBindingFromFoundation(
+		foundation,
+		domain.CharacterCardInputSignatures{CreativeBrief: "brief"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := newCharacterCardStore(newIO(dir))
+	saved, err := store.SaveCandidateCAS(domain.CharacterCardCandidate{
+		Version:    domain.CharacterCardCandidateVersion,
+		Base:       binding,
+		Foundation: foundation,
+	}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest, err := domain.CharacterCardContentDigest(saved.Foundation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.DiscardCandidateCAS(saved.Revision+1, digest); err == nil {
+		t.Fatal("stale revision unexpectedly discarded the candidate")
+	}
+	if current, err := store.LoadCandidate(); err != nil || current == nil {
+		t.Fatalf("candidate missing after rejected discard: candidate=%+v err=%v", current, err)
+	}
+	if err := store.DiscardCandidateCAS(saved.Revision, digest); err != nil {
+		t.Fatal(err)
+	}
+	if current, err := store.LoadCandidate(); err != nil || current != nil {
+		t.Fatalf("candidate remains after valid discard: candidate=%+v err=%v", current, err)
+	}
+}
+
+func TestCharacterCardStoresShareProjectLockAcrossStoreInstances(t *testing.T) {
+	dir := t.TempDir()
+	first := NewStore(dir).CharacterCards
+	second := NewStore(dir).CharacterCards
+
+	first.mu.Lock()
+	loadDone := make(chan error, 1)
+	go func() {
+		_, err := second.LoadCandidate()
+		loadDone <- err
+	}()
+
+	select {
+	case err := <-loadDone:
+		first.mu.Unlock()
+		t.Fatalf("second store bypassed the shared project lock: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+	first.mu.Unlock()
+
+	select {
+	case err := <-loadDone:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("second store remained blocked after the shared project lock was released")
+	}
+}
+
+func TestCharacterCardDiscardCannotDeleteConcurrentCandidateRevision(t *testing.T) {
+	dir := t.TempDir()
+	first := NewStore(dir).CharacterCards
+	second := NewStore(dir).CharacterCards
+	foundation := legacyCharacterCardFoundation(domain.StoryFoundationSchemaVersion)
+	foundation.Revision = 1
+	binding, err := domain.CharacterCardBindingFromFoundation(
+		foundation,
+		domain.CharacterCardInputSignatures{CreativeBrief: "brief"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved, err := first.SaveCandidateCAS(domain.CharacterCardCandidate{
+		Version:    domain.CharacterCardCandidateVersion,
+		Base:       binding,
+		Foundation: foundation,
+	}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldDigest, err := domain.CharacterCardContentDigest(saved.Foundation)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	writerEntered := make(chan struct{})
+	releaseWriter := make(chan struct{})
+	defer func() {
+		select {
+		case <-releaseWriter:
+		default:
+			close(releaseWriter)
+		}
+	}()
+	second.io.writeFault = func(rel, stage string) error {
+		if rel == characterCardCandidateFile && stage == "after_temp_sync" {
+			close(writerEntered)
+			<-releaseWriter
+		}
+		return nil
+	}
+	next := saved
+	next.Foundation.Premise = "concurrently updated candidate"
+	saveDone := make(chan error, 1)
+	go func() {
+		_, saveErr := second.SaveCandidateCAS(next, saved.Revision)
+		saveDone <- saveErr
+	}()
+	select {
+	case <-writerEntered:
+	case <-time.After(2 * time.Second):
+		t.Fatal("candidate writer did not reach the deterministic barrier")
+	}
+
+	discardDone := make(chan error, 1)
+	go func() {
+		discardDone <- first.DiscardCandidateCAS(saved.Revision, oldDigest)
+	}()
+	select {
+	case discardErr := <-discardDone:
+		t.Fatalf("discard bypassed the in-flight candidate write: %v", discardErr)
+	case <-time.After(100 * time.Millisecond):
+	}
+	close(releaseWriter)
+
+	select {
+	case saveErr := <-saveDone:
+		if saveErr != nil {
+			t.Fatal(saveErr)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("candidate writer did not finish")
+	}
+	select {
+	case discardErr := <-discardDone:
+		var conflict *CharacterCardLifecycleConflictError
+		if !errors.As(discardErr, &conflict) || conflict.Expected != saved.Revision || conflict.Actual != saved.Revision+1 {
+			t.Fatalf("stale discard error = %v, want revision conflict %d -> %d", discardErr, saved.Revision, saved.Revision+1)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("stale discard did not finish after the writer released the shared lock")
+	}
+	current, err := first.LoadCandidate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if current == nil || current.Revision != saved.Revision+1 || current.Foundation.Premise != next.Foundation.Premise {
+		t.Fatalf("concurrent candidate revision was deleted or replaced: %+v", current)
 	}
 }
 

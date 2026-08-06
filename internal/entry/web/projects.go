@@ -948,6 +948,9 @@ func (s *ProjectStore) loadProjectConfig(manifest ProjectManifest) (bootstrap.Co
 		}
 		return bootstrap.Config{}, false, fmt.Errorf("load project config %s: %w", path, err)
 	}
+	// Global prompt overrides belong exclusively to the global config. Ignore
+	// legacy or manually added project values and avoid persisting them again.
+	cfg.GlobalPrompts = nil
 	return cfg, true, nil
 }
 

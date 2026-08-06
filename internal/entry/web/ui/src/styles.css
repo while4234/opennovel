@@ -5369,7 +5369,7 @@ h2 {
   }
 }
 
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-height: 520px) and (max-width: 1024px) {
   .app-shell {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows:
@@ -5604,7 +5604,8 @@ h2 {
   }
 }
 
-@media (max-width: 767px) and (orientation: landscape) {
+@media (max-width: 767px) and (orientation: landscape),
+  (max-height: 520px) and (max-width: 1024px) and (orientation: landscape) {
   .compact-dialog,
   .mobile-action-sheet {
     max-height: 92dvh;

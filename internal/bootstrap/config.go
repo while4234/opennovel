@@ -12,6 +12,7 @@ import (
 	"github.com/voocel/agentcore/llm"
 	"github.com/voocel/ainovel-cli/internal/codexauth"
 	"github.com/voocel/ainovel-cli/internal/errs"
+	"github.com/voocel/ainovel-cli/internal/globalprompt"
 	"github.com/voocel/ainovel-cli/internal/models"
 	"github.com/voocel/ainovel-cli/internal/utils"
 )
@@ -462,6 +463,10 @@ type Config struct {
 	// WebRuntimeRoot is the optional config-file override for web project storage.
 	RuntimeRoot string `json:"runtime_root,omitempty"`
 
+	// GlobalPrompts contains global model-family prompt overrides. Project
+	// overlays deliberately never merge or persist this global-only setting.
+	GlobalPrompts map[string]string `json:"global_prompts,omitempty"`
+
 	// ResumeSchedule is global. Project overlays only use
 	// ScheduledResumeEnabled and never replace the global daily times.
 	ResumeSchedule         ResumeScheduleConfig `json:"resume_schedule,omitempty"`
@@ -532,6 +537,9 @@ func (n NotifyConfig) IsEnabled() bool { return n.Enabled == nil || *n.Enabled }
 
 // ValidateBase 校验基础配置。
 func (c *Config) ValidateBase() error {
+	if err := globalprompt.ValidateOverrides(c.GlobalPrompts); err != nil {
+		return fmt.Errorf("global_prompts: %w", err)
+	}
 	if _, err := NormalizeResumeSchedule(c.ResumeSchedule); err != nil {
 		return err
 	}

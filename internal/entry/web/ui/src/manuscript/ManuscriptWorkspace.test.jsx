@@ -152,13 +152,14 @@ describe('ManuscriptWorkspace', () => {
     }
   });
   it('aborts and isolates all old project state when projectId changes', async () => {
-    let resolveA;
-    api.loadManuscriptTree.mockImplementation((project) => project === 'A'
-      ? new Promise((resolve) => { resolveA = resolve; })
+    let resolveA, projectASignal;
+    api.loadManuscriptTree.mockImplementation((project, options = {}) => project === 'A'
+      ? new Promise((resolve) => { resolveA = resolve; projectASignal = options.signal; })
       : Promise.resolve({ ...tree, nodes: [{ ...tree.nodes[0], children: [{ ...tree.nodes[0].children[0], children: [{ ...tree.nodes[0].children[0].children[0], stable_id: 'b1', display_label: 'B chapter' }] }] }] }));
     api.loadManuscriptChunk.mockImplementation(async (_p, id, options = {}) => chapter(id, options.view));
     await act(async () => root.render(<WorkspaceFixture projectId="A" />)); await settle();
     await act(async () => root.render(<WorkspaceFixture projectId="B" />)); await settle();
+    expect(projectASignal.aborted).toBe(true);
     await act(async () => resolveA(tree)); await settle();
     expect(container.textContent).toContain('b1-current');
     expect(container.textContent).not.toContain('c1-current');

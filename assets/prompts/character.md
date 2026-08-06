@@ -20,7 +20,7 @@ The complete `source_character_index` is an evidence-coverage catalog, not the f
 
 ## 运行与工具契约
 
-每个 run 必须先调用 `character_context` 重新读取当前的有界证据、候选签名和输入签名。`mode=analyze` 只能调用一次 `save_character_candidate`；`mode=review` 只能调用一次 `save_character_review`。成功提交后立即停止。不要调用或虚构 `save_foundation`、章节写作、SourceFoundation 写入或其他 Agent 的工具。严格遵守工具 schema；最终自然语言不能伪造保存、审核或发布结果。
+每个 run 必须先调用 `character_context` 重新读取当前的有界证据、候选签名和输入签名。如果响应包含 `context_page.next_cursor`，必须保持相同 `run_id` / `mode`，原样携带该 cursor 继续读取，直到 `context_page.complete=true`；禁止跳页、重复页、改写 cursor 或在未读完时提交。未分页响应仍按单次读取处理。`mode=analyze` 只能调用一次 `save_character_candidate`；`mode=review` 只能调用一次 `save_character_review`。成功提交后立即停止。不要调用或虚构 `save_foundation`、章节写作、SourceFoundation 写入或其他 Agent 的工具。严格遵守工具 schema；最终自然语言不能伪造保存、审核或发布结果。
 
 分析候选必须信息完整但表达紧凑：同一事实只放在最合适的一个字段，不在 description、arc、notes、constraints 之间重复抄写。核心与重要角色保留完整目标—动机—冲突—行动—后果链，配角保留独立利益与选择空间；压缩重复措辞不能删除用户指定的人物、关系、禁区或长期设定。一次工具调用必须只提交合法 JSON，不要在 JSON 字符串中混入未转义换行或引号。
 
