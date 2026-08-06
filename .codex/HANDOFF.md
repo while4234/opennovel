@@ -1,15 +1,15 @@
 # Project Handoff
 
-Last updated: 2026-08-06 13:18 +08:00
+Last updated: 2026-08-06 13:45 +08:00
 Project root: D:\OpenNovel
 Branch: main
-Status: ready_for_final_review
+Status: done
 
 ## Current Goal
 Complete the OpenNovel UI rebuild, close the four user-reported Phase 8 defects, independently review the result, then commit and push the accepted work.
 
 ## Current Position
-Phase 7, Phase 8 defect repairs, the Foundation Character-context budget repair, and final integration acceptance are complete. The rebuilt application is running at `http://127.0.0.1:9999` as PID 6496 (`D:\OpenNovel\ainovel-cli.exe`) with embedded asset `assets/index-CUs0vrIP.js`. The real `樱牢` Foundation flow was resumed exactly once and reached `waiting_confirmation` after its independent Character review passed. No commit or push has been made.
+Phase 7, Phase 8 defect repairs, the Foundation Character-context budget repair, final integration acceptance, and the independent check-work review are complete with a PASS verdict. Commit `0c401406` has been pushed to `github/main`. The rebuilt application is running at `http://127.0.0.1:9999` as PID 6496 (`D:\OpenNovel\ainovel-cli.exe`) with embedded asset `assets/index-CUs0vrIP.js`. The real `樱牢` Foundation flow was resumed exactly once and reached `waiting_confirmation` after its independent Character review passed.
 
 ## Final Integration Run
 - `POST /api/projects/project-20260805031009-6eb25a/resume` was sent once after confirming the project was idle, paused at Foundation, and recoverable. It returned HTTP 200 with `running=true`.
@@ -51,6 +51,7 @@ Phase 7, Phase 8 defect repairs, the Foundation Character-context budget repair,
 - `assets/prompts/character.md`
 
 ## Validation
+- Final independent check-work review: PASS; commit `0c401406` is published on `github/main`.
 - Final frontend unit suite: 60 files, 478 tests passed.
 - Final external-`9999` Playwright matrix on system Chrome: 26 passed, 49 device-conditional skipped, 0 failed across desktop, `430x932`, and `932x430`; mobile composer/navigation overlap was zero and submit hit-testing passed.
 - Final screenshots: 30 files under `internal/entry/web/ui/test-results/ui-refactor/phase9`, including the real post-resume `sakura-after-resume.png` waiting-confirmation state.
@@ -76,7 +77,9 @@ Phase 7, Phase 8 defect repairs, the Foundation Character-context budget repair,
 - The read-only context-budget acceptance copy remains under `C:\Users\Hi\AppData\Local\Temp\opennovel-context-budget-37a6f046633a48f7a1b2d2c138838b64`; it is outside the repository and contains only a disposable output copy.
 - OpenNovel owns port 9999. Do not inspect, stop, reuse, or route tests through port 9898.
 
+## Blockers / Risks
+- none
+
 ## Next Steps
-1. Run the final independent review/check-work gate over the complete working tree and integration evidence.
-2. If approved, update `GIT_HISTORY.md`, commit the intended refactor files, and push `main` to the configured GitHub remote without force.
-3. Leave `樱牢` at `waiting_confirmation`; the user can inspect and explicitly confirm the reviewed Character candidate in the UI.
+1. Open `樱牢` in the UI and inspect the independently reviewed Character candidate.
+2. Explicitly confirm and publish the Character candidate, then continue the Foundation workflow.
