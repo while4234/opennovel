@@ -6,6 +6,7 @@ import (
 
 	"github.com/voocel/ainovel-cli/internal/domain"
 	storepkg "github.com/voocel/ainovel-cli/internal/store"
+	"github.com/voocel/ainovel-cli/internal/tools"
 )
 
 func TestRouteOriginalPlanningAlternatesGenerationAndIndependentAudit(t *testing.T) {
@@ -212,6 +213,9 @@ func TestRouteOriginalPlanningUsesScopedDetailAndReviewContexts(t *testing.T) {
 			if strings.Contains(got.Task, "novel_context(scope=planning)") {
 				t.Fatalf("route retained generic planning scope: %s", got.Task)
 			}
+			if got.Agent == "editor" && strings.Contains(got.Task, "planning_volume") {
+				t.Fatalf("editor route used Architect planning_volume scope: %s", got.Task)
+			}
 			if tt.work.Kind == "expand_arc" &&
 				(!strings.Contains(got.Task, "稳定 relationship_id") ||
 					!strings.Contains(got.Task, "source_character_id/target_character_id")) {
@@ -295,6 +299,9 @@ func TestRouteOriginalPlanningAuditsSkeletonBeforeUserReview(t *testing.T) {
 	if got == nil || got.Agent != "editor" || !strings.Contains(got.Task, "skeleton_book") || !strings.Contains(got.Task, "终卷没有真正结束全书") {
 		t.Fatalf("skeleton final audit route = %+v", got)
 	}
+	if got.PlanningReview == nil || *got.PlanningReview != (tools.PlanningReviewSelector{}) {
+		t.Fatalf("skeleton final audit selector = %+v", got.PlanningReview)
+	}
 	if strings.Contains(got.Task, largeEvidence[:256]) || len(got.Task) > 4096 {
 		t.Fatalf("skeleton final audit task repeated durable evidence: %d bytes", len(got.Task))
 	}
@@ -313,6 +320,9 @@ func TestRouteOriginalPlanningBatchAuditReferencesDurableEvidence(t *testing.T) 
 	if got == nil || got.Agent != "editor" || !strings.Contains(got.Task, "from_volume=7, to_volume=8") {
 		t.Fatalf("skeleton batch audit route = %+v", got)
 	}
+	if got.PlanningReview == nil || got.PlanningReview.FromVolume != 7 || got.PlanningReview.ToVolume != 8 {
+		t.Fatalf("skeleton batch audit selector = %+v", got.PlanningReview)
+	}
 	if strings.Contains(got.Task, largeEvidence[:256]) || len(got.Task) > 4096 {
 		t.Fatalf("skeleton batch audit task repeated durable evidence: %d bytes", len(got.Task))
 	}
@@ -330,5 +340,8 @@ func TestRouteOriginalPlanningRepairsRejectedSkeletonVolume(t *testing.T) {
 	got := Route(state)
 	if got == nil || got.Agent != "architect_long" || !strings.Contains(got.Task, "repair_volume") || !strings.Contains(got.Task, "第3卷") {
 		t.Fatalf("skeleton repair route = %+v", got)
+	}
+	if !strings.Contains(got.Task, "novel_context(scope=planning_volume, volume=3)") || strings.Contains(got.Task, "novel_context(scope=planning)") {
+		t.Fatalf("skeleton repair route must use bounded planning_volume: %s", got.Task)
 	}
 }

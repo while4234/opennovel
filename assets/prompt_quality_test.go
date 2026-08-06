@@ -41,6 +41,7 @@ func TestCompactRolePromptsRetainQualityCapabilities(t *testing.T) {
 				{ID: "writer_independence", Description: "writer self-report is not evidence", AnyOf: []string{"summary/passed"}},
 				{ID: "chapter_source", Description: "segmented detail mode reads full source and boundaries", AnyOf: []string{"完整来源章、当前职责及相邻 segment 边界"}},
 				{ID: "simulation", Description: "simulation contract review", AnyOf: []string{"Editor review view"}},
+				{ID: "planning_review_scope", Description: "volume skeleton review uses only the bounded review scope", AnyOf: []string{"Editor MUST NOT call `planning_volume`"}},
 			}},
 		},
 		{

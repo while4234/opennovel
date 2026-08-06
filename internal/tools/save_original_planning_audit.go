@@ -16,15 +16,22 @@ import (
 // SaveOriginalPlanningAuditTool persists the independent editorial gates used
 // while a normal-original long-form outline is being expanded. It deliberately
 // excludes adaptation/source-fidelity criteria.
-type SaveOriginalPlanningAuditTool struct{ store *store.Store }
+type SaveOriginalPlanningAuditTool struct {
+	store           *store.Store
+	planningReviews *PlanningReviewRunRegistry
+}
 
 type observedPlanningSceneCount struct {
 	Chapter int `json:"chapter"`
 	Count   int `json:"count"`
 }
 
-func NewSaveOriginalPlanningAuditTool(st *store.Store) *SaveOriginalPlanningAuditTool {
-	return &SaveOriginalPlanningAuditTool{store: st}
+func NewSaveOriginalPlanningAuditTool(st *store.Store, registries ...*PlanningReviewRunRegistry) *SaveOriginalPlanningAuditTool {
+	var registry *PlanningReviewRunRegistry
+	if len(registries) > 0 {
+		registry = registries[0]
+	}
+	return &SaveOriginalPlanningAuditTool{store: st, planningReviews: registry}
 }
 
 func (t *SaveOriginalPlanningAuditTool) Name() string  { return "save_original_planning_audit" }
@@ -64,6 +71,7 @@ func (t *SaveOriginalPlanningAuditTool) Schema() map[string]any {
 		schema.Property("to_volume", schema.Int("book_batch 结束卷号（最多2卷）；不适用时传 0")).Required(),
 		schema.Property("from_chapter", schema.Int("审核证据起始章节；不适用时传 0")).Required(),
 		schema.Property("to_chapter", schema.Int("审核证据结束章节；不适用时传 0")).Required(),
+		schema.Property("review_id", schema.String("Host 分配的规划审核 ID；skeleton_* scope 必须填写，其余 scope 传空字符串")).Required(),
 		schema.Property("verdict", schema.Enum("审核结论", "pass", "revise")).Required(),
 		schema.Property("summary", schema.String("有证据的审核结论")).Required(),
 		schema.Property("dimensions", schema.Array("审核维度数组", dimensionSchema)).Required(),
@@ -85,6 +93,7 @@ func (t *SaveOriginalPlanningAuditTool) Execute(ctx context.Context, args json.R
 	var input struct {
 		domain.OriginalPlanningAudit
 		ObservedSceneCounts []observedPlanningSceneCount `json:"observed_scene_counts"`
+		ReviewID            string                       `json:"review_id"`
 	}
 	if err := json.Unmarshal(args, &input); err != nil {
 		return nil, fmt.Errorf("invalid original planning audit: %w: %w", errs.ErrToolArgs, err)
@@ -128,6 +137,16 @@ func (t *SaveOriginalPlanningAuditTool) Execute(ctx context.Context, args json.R
 		return nil, fmt.Errorf("original planning audit scene evidence: %w: %w", errs.ErrToolPrecondition, err)
 	}
 	audit.FoundationRevision = foundationRevision
+	if isOriginalSkeletonAuditScope(audit.Scope) {
+		selector := planningReviewSelectorForAudit(audit)
+		binding, bindingErr := loadPlanningReviewBinding(t.store, selector)
+		if bindingErr != nil {
+			return nil, fmt.Errorf("load planning review binding before audit save: %w", bindingErr)
+		}
+		if err := t.planningReviews.requireComplete(input.ReviewID, selector, binding); err != nil {
+			return nil, fmt.Errorf("planning review evidence gate: %w", err)
+		}
+	}
 	if err := validateOriginalPlanningAuditEvidence(t.store, audit); err != nil {
 		return nil, fmt.Errorf("original planning audit evidence: %w: %w", errs.ErrToolPrecondition, err)
 	}
@@ -144,6 +163,9 @@ func (t *SaveOriginalPlanningAuditTool) Execute(ctx context.Context, args json.R
 	artifact := "meta/original_planning/audits.json"
 	if _, err := t.store.Checkpoints.AppendArtifact(domain.GlobalScope(), "original_planning_audit", artifact); err != nil {
 		return nil, fmt.Errorf("checkpoint original planning audit: %w", err)
+	}
+	if isOriginalSkeletonAuditScope(audit.Scope) {
+		t.planningReviews.Complete(input.ReviewID)
 	}
 	result := map[string]any{
 		"saved": true, "scope": audit.Scope, "verdict": audit.Verdict,
@@ -190,6 +212,17 @@ func (t *SaveOriginalPlanningAuditTool) Execute(ctx context.Context, args json.R
 		result["planning_review_kind"] = domain.PlanningReviewKindVolumeSplit
 	}
 	return json.Marshal(result)
+}
+
+func planningReviewSelectorForAudit(audit domain.OriginalPlanningAudit) PlanningReviewSelector {
+	switch audit.Scope {
+	case "skeleton_volume":
+		return PlanningReviewSelector{Volume: audit.Volume}
+	case "skeleton_book_batch":
+		return PlanningReviewSelector{FromVolume: audit.FromVolume, ToVolume: audit.ToVolume}
+	default:
+		return PlanningReviewSelector{}
+	}
 }
 
 func validateObservedPlanningSceneCounts(

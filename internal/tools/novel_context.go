@@ -10,6 +10,7 @@ import (
 
 	"github.com/voocel/agentcore/schema"
 	"github.com/voocel/ainovel-cli/internal/domain"
+	"github.com/voocel/ainovel-cli/internal/errs"
 	"github.com/voocel/ainovel-cli/internal/store"
 )
 
@@ -39,11 +40,12 @@ type References struct {
 
 // ContextTool 组装当前章节所需上下文。
 type ContextTool struct {
-	store          *store.Store
-	refs           References
-	style          string
-	simulationMode string
-	simulationRole string
+	store           *store.Store
+	refs            References
+	style           string
+	simulationMode  string
+	simulationRole  string
+	planningReviews *PlanningReviewRunRegistry
 }
 
 const (
@@ -55,6 +57,7 @@ const (
 	writerRecoveryContextBytes       = 8 * 1024
 	planningContextBudgetBytes       = 60 * 1024
 	planningContextSourceBytes       = 32 * 1024
+	planningVolumeContextSourceBytes = 32 * 1024
 	planningDetailContextSourceBytes = 36 * 1024
 	planningReviewContextSourceBytes = 28 * 1024
 	planningAuditContextSourceBytes  = 34 * 1024
@@ -65,8 +68,9 @@ const (
 )
 
 type ContextToolOptions struct {
-	SimulationMode string
-	Role           string
+	SimulationMode  string
+	Role            string
+	PlanningReviews *PlanningReviewRunRegistry
 }
 
 // NewContextTool 创建上下文工具。
@@ -77,11 +81,12 @@ func NewContextTool(store *store.Store, refs References, style string) *ContextT
 
 func NewContextToolWithOptions(store *store.Store, refs References, style string, opts ContextToolOptions) *ContextTool {
 	return &ContextTool{
-		store:          store,
-		refs:           refs,
-		style:          style,
-		simulationMode: normalizeContextToolSimulationMode(opts.SimulationMode),
-		simulationRole: normalizeContextToolSimulationRole(opts.Role),
+		store:           store,
+		refs:            refs,
+		style:           style,
+		simulationMode:  normalizeContextToolSimulationMode(opts.SimulationMode),
+		simulationRole:  normalizeContextToolSimulationRole(opts.Role),
+		planningReviews: opts.PlanningReviews,
 	}
 }
 
@@ -101,13 +106,15 @@ func (t *ContextTool) ConcurrencySafe(_ json.RawMessage) bool { return true }
 
 func (t *ContextTool) Schema() map[string]any {
 	return schema.Object(
-		schema.Property("scope", schema.Enum("Context scope. Empty defaults to chapter when chapter is set, otherwise planning. planning_detail is the Architect-only high-fidelity generation view for one volume/arc and requires volume+arc. planning_audit is the Editor/repair single-call evidence pack for at most four detailed chapters and requires volume+arc+from+to. planning_review is the Editor-only bounded view for a volume skeleton review. status returns progress only; summary returns a compact evidence pack for an inclusive chapter range.", "chapter", "outline_range", "summary", "planning", "planning_detail", "planning_audit", "planning_review", "status")),
+		schema.Property("scope", schema.Enum("Context scope. Empty defaults to chapter when chapter is set, otherwise planning. planning_volume is the Architect-only bounded volume-skeleton view and requires volume. planning_detail is the Architect-only high-fidelity generation view for one volume/arc and requires volume+arc. planning_audit is the Editor/repair single-call evidence pack for at most four detailed chapters and requires volume+arc+from+to. planning_review is the Editor-only bounded view for a volume skeleton review. status returns progress only; summary returns a compact evidence pack for an inclusive chapter range.", "chapter", "outline_range", "summary", "planning", "planning_volume", "planning_detail", "planning_audit", "planning_review", "status")),
 		schema.Property("from", schema.Int("First chapter for scope=outline_range.")),
 		schema.Property("to", schema.Int("Last chapter for scope=outline_range.")),
-		schema.Property("volume", schema.Int("Volume number for scope=summary, planning_detail, planning_audit, or a single-volume planning_review.")),
+		schema.Property("volume", schema.Int("Volume number for scope=summary, planning_volume, planning_detail, planning_audit, or a single-volume planning_review.")),
 		schema.Property("arc", schema.Int("Arc number for scope=planning_detail or planning_audit.")),
 		schema.Property("from_volume", schema.Int("First volume for a planning_review batch.")),
 		schema.Property("to_volume", schema.Int("Last volume for a planning_review batch.")),
+		schema.Property("review_id", schema.String("Optional for planning_review page zero when exactly one Host authorization matches the selector. The canonical ID is returned on page zero; use it when saving. For later pages it may be omitted when cursor is supplied.")),
+		schema.Property("cursor", schema.String("Signed opaque next_cursor required after page zero. Later requests need only scope=planning_review plus this exact cursor; it carries the canonical selector and review ID.")),
 		schema.Property("chapter", schema.Int("章节号。不传则返回进度状态和基础设定（Coordinator 用于判断下一步）；传入则额外返回该章的写作上下文（Writer 用）")),
 	)
 }
@@ -122,11 +129,30 @@ func (t *ContextTool) Execute(_ context.Context, args json.RawMessage) (json.Raw
 		Arc        int    `json:"arc"`
 		FromVolume int    `json:"from_volume"`
 		ToVolume   int    `json:"to_volume"`
+		ReviewID   string `json:"review_id"`
+		Cursor     string `json:"cursor"`
 	}
 	if err := json.Unmarshal(args, &a); err != nil {
 		return nil, fmt.Errorf("invalid args: %w", err)
 	}
 	scope := normalizeContextScope(a.Scope, a.Chapter)
+	planningReviewID := strings.TrimSpace(a.ReviewID)
+	planningReviewSelector := PlanningReviewSelector{
+		Volume: a.Volume, FromVolume: a.FromVolume, ToVolume: a.ToVolume,
+	}
+	if scope == "planning_review" && strings.TrimSpace(a.Cursor) != "" {
+		var err error
+		planningReviewID, planningReviewSelector, err = resolvePlanningReviewCursorRequest(
+			planningReviewID,
+			a.Cursor,
+			planningReviewSelector,
+			a.Volume != 0 || a.FromVolume != 0 || a.ToVolume != 0,
+			t.planningReviews,
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	result := make(map[string]any)
 	chapterPurpose := chapterContextWriting
@@ -159,7 +185,26 @@ func (t *ContextTool) Execute(_ context.Context, args json.RawMessage) (json.Raw
 		t.buildProgressStatus(result)
 		t.buildArchitectContext(result, warn)
 		t.buildAdaptationPlanningContext(result, warn)
-		if err := t.scopePlanningReviewContext(result, a.Volume, a.FromVolume, a.ToVolume); err != nil {
+		if err := t.scopePlanningReviewContext(
+			result,
+			planningReviewSelector.Volume,
+			planningReviewSelector.FromVolume,
+			planningReviewSelector.ToVolume,
+		); err != nil {
+			return nil, err
+		}
+	case "planning_volume":
+		t.buildProgressStatus(result)
+		t.buildArchitectContext(result, warn)
+		t.buildAdaptationPlanningContext(result, warn)
+		if err := t.scopePlanningVolumeContext(result, a.Volume); err != nil {
+			return nil, err
+		}
+	case "planning":
+		t.buildProgressStatus(result)
+		t.buildArchitectContext(result, warn)
+		t.buildAdaptationPlanningContext(result, warn)
+		if err := t.scopeGeneralPlanningContext(result); err != nil {
 			return nil, err
 		}
 	case "planning_detail":
@@ -206,13 +251,17 @@ func (t *ContextTool) Execute(_ context.Context, args json.RawMessage) (json.Raw
 	// 始终输出稳定结构，避免 LLM 看到 user_rules=null 走异常分支。
 	t.buildRoleBoundSimulationContext(result, scope, chapterPurpose, warn)
 
-	if scope == "chapter" || scope == "planning" || scope == "planning_detail" {
+	if scope == "chapter" || scope == "planning" || scope == "planning_volume" || scope == "planning_detail" {
 		t.buildUserRules(result, scope == "chapter" && chapterContextHasAuthoritativeOutline(result))
 		t.buildWordBudget(result, a.Chapter)
 	} else if scope == "planning_review" {
 		t.buildWordBudget(result, a.Chapter)
 	}
-	if scope == "planning_detail" {
+	briefCompacted := false
+	if _, boundedPlanningScope := planningContextLimits[scope]; boundedPlanningScope {
+		briefCompacted = t.compactEstablishedCreativeBrief(result)
+	}
+	if briefCompacted && (scope == "planning" || scope == "planning_volume" || scope == "planning_detail") {
 		deduplicatePlanningDetailContext(result)
 	}
 	if scope == "chapter" {
@@ -224,7 +273,49 @@ func (t *ContextTool) Execute(_ context.Context, args json.RawMessage) (json.Raw
 	}
 
 	result["_loading_summary"] = buildLoadingSummary(result, a.Chapter)
-	return json.Marshal(result)
+	if scope == "planning_review" {
+		binding, err := loadPlanningReviewBinding(t.store, planningReviewSelector)
+		if err != nil {
+			return nil, err
+		}
+		return buildPlanningReviewPage(
+			result,
+			planningReviewID,
+			a.Cursor,
+			planningReviewSelector,
+			binding,
+			t.planningReviews,
+		)
+	}
+	return marshalBoundedContext(scope, result)
+}
+
+func resolvePlanningReviewCursorRequest(
+	requestedReviewID string,
+	cursorValue string,
+	requestedSelector PlanningReviewSelector,
+	selectorProvided bool,
+	registry *PlanningReviewRunRegistry,
+) (string, PlanningReviewSelector, error) {
+	cursor, err := decodePlanningReviewCursor(cursorValue)
+	if err != nil {
+		return "", PlanningReviewSelector{}, err
+	}
+	if cursor.Version != 1 || strings.TrimSpace(cursor.ReviewID) == "" {
+		return "", PlanningReviewSelector{}, fmt.Errorf("planning review cursor version or review ID is invalid: %w", errs.ErrToolArgs)
+	}
+	requestedReviewID = strings.TrimSpace(requestedReviewID)
+	if requestedReviewID != "" && requestedReviewID != cursor.ReviewID {
+		return "", PlanningReviewSelector{}, fmt.Errorf("planning review_id differs from signed cursor: %w", errs.ErrToolConflict)
+	}
+	if selectorProvided && requestedSelector != cursor.Selector {
+		return "", PlanningReviewSelector{}, fmt.Errorf("planning review selector differs from signed cursor: %w", errs.ErrToolConflict)
+	}
+	selector, err := registry.ResolveAuthorizedSelector(cursor.ReviewID, cursor.Selector)
+	if err != nil {
+		return "", PlanningReviewSelector{}, err
+	}
+	return cursor.ReviewID, selector, nil
 }
 
 func chapterContextHasAuthoritativeOutline(result map[string]any) bool {
@@ -249,6 +340,8 @@ func normalizeContextScope(scope string, chapter int) string {
 		return "planning"
 	case "planning":
 		return "planning"
+	case "planning_volume":
+		return "planning_volume"
 	case "planning_detail":
 		return "planning_detail"
 	case "planning_review":

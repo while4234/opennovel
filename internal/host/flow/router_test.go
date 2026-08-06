@@ -11,6 +11,7 @@ import (
 	"github.com/voocel/agentcore"
 	"github.com/voocel/ainovel-cli/internal/domain"
 	storepkg "github.com/voocel/ainovel-cli/internal/store"
+	"github.com/voocel/ainovel-cli/internal/tools"
 )
 
 // helper：构造一个处于 Writing 阶段、分层模式的 Progress。
@@ -1058,6 +1059,95 @@ func TestDispatcher_TrackRepeat(t *testing.T) {
 	d.ResetRepeat()
 	if got := d.trackRepeat(other); got != 1 {
 		t.Fatalf("ResetRepeat 后首次应计 1，got %d", got)
+	}
+}
+
+func TestDispatcherAssignsFreshPlanningReviewIDPerDispatchAttempt(t *testing.T) {
+	registry := tools.NewPlanningReviewRunRegistry()
+	dispatcher := NewDispatcher(nil, nil, registry)
+	original := &Instruction{
+		Agent: "editor", Task: "audit volume three",
+		PlanningReview: &tools.PlanningReviewSelector{Volume: 3},
+	}
+	first, err := dispatcher.authorizePlanningReviewInstruction(original)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := dispatcher.authorizePlanningReviewInstruction(original)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(first.Task, "review_id=\"planning-review-") ||
+		!strings.Contains(first.Task, "next_cursor") || !strings.Contains(first.Task, "complete=true") {
+		t.Fatalf("first dispatch omitted paging contract: %s", first.Task)
+	}
+	if first.Task == second.Task {
+		t.Fatal("new Host dispatch reused the prior review_id")
+	}
+	if registry.ActiveRunCount() != 1 {
+		t.Fatalf("new dispatch did not revoke the older selector run: active=%d", registry.ActiveRunCount())
+	}
+	if original.Task != "audit volume three" {
+		t.Fatalf("dispatch mutated pure route instruction: %s", original.Task)
+	}
+	dispatcher.ResetRepeat()
+	if registry.ActiveRunCount() != 0 {
+		t.Fatalf("ResetRepeat retained planning reviews: active=%d", registry.ActiveRunCount())
+	}
+	if _, err := dispatcher.authorizePlanningReviewInstruction(original); err != nil {
+		t.Fatal(err)
+	}
+	dispatcher.Disable()
+	if registry.ActiveRunCount() != 0 {
+		t.Fatalf("Disable retained planning reviews: active=%d", registry.ActiveRunCount())
+	}
+}
+
+func TestDispatcherPlanningReviewMessageCarriesAuthorizedTask(t *testing.T) {
+	registry := tools.NewPlanningReviewRunRegistry()
+	var request *agentcore.LLMRequest
+	started := make(chan struct{})
+	release := make(chan struct{})
+	coordinator := agentcore.NewAgent(agentcore.WithModel(sequentialFlowTestModel(
+		func(index int, captured *agentcore.LLMRequest) (*agentcore.LLMResponse, error) {
+			if index == 0 {
+				close(started)
+				<-release
+				return &agentcore.LLMResponse{Message: flowTestAssistantMsg("ready", agentcore.StopReasonStop)}, nil
+			}
+			request = captured
+			return &agentcore.LLMResponse{Message: flowTestAssistantMsg("done", agentcore.StopReasonStop)}, nil
+		},
+	)))
+	dispatcher := NewDispatcher(coordinator, nil, registry)
+	instruction := &Instruction{
+		Agent: "editor", Task: "audit volume three",
+		PlanningReview: &tools.PlanningReviewSelector{Volume: 3},
+	}
+	if err := coordinator.Prompt(context.Background(), "start"); err != nil {
+		t.Fatal(err)
+	}
+	<-started
+	if err := dispatcher.dispatchFenced(instruction, storepkg.RevisionFence{}, true); err != nil {
+		t.Fatal(err)
+	}
+	close(release)
+	coordinator.WaitForIdle()
+	if request == nil || len(request.Messages) == 0 {
+		t.Fatal("Dispatcher did not deliver a Coordinator user message")
+	}
+	reviewID, err := registry.ResolveActive(tools.PlanningReviewSelector{Volume: 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	actualMessage := request.Messages[len(request.Messages)-1].TextContent()
+	for _, want := range []string{
+		"subagent(editor", "audit volume three", "Host has authorized review_id", reviewID,
+		"first planning_review call may omit review_id", "signed next_cursor", "complete=true",
+	} {
+		if !strings.Contains(actualMessage, want) {
+			t.Fatalf("actual Dispatcher message omitted %q: %s", want, actualMessage)
+		}
 	}
 }
 

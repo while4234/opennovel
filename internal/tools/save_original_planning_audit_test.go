@@ -18,7 +18,7 @@ func TestSaveOriginalPlanningAuditSchemaIsStrictCompatible(t *testing.T) {
 	requireRequiredFields(t, toolSchema,
 		"scope", "scope_id", "volume", "arc", "from_volume", "to_volume",
 		"from_chapter", "to_chapter", "verdict", "summary", "dimensions", "issues",
-		"observed_scene_counts",
+		"observed_scene_counts", "review_id",
 	)
 	requireAllPropertiesRequired(t, toolSchema)
 

@@ -24,7 +24,15 @@ const maxConsecutiveBlocks = 5
 
 // NewStopGuard 构造 Coordinator 专用 StopGuard。
 // onBlock 可选，非 nil 时每次阻拦调一次，用于审计。
-func NewStopGuard(st *store.Store, onBlock func(reason string, consecutive int32)) agentcore.StopGuard {
+func NewStopGuard(
+	st *store.Store,
+	onBlock func(reason string, consecutive int32),
+	reviewPreparers ...*flow.PlanningReviewTaskPreparer,
+) agentcore.StopGuard {
+	var reviewTasks *flow.PlanningReviewTaskPreparer
+	if len(reviewPreparers) > 0 {
+		reviewTasks = reviewPreparers[0]
+	}
 	var consecutive atomic.Int32
 	var lastBlockTurn atomic.Int64 // 上次 block 的 TurnIndex；-1 表示尚未 block 过
 	lastBlockTurn.Store(-1)
@@ -63,7 +71,7 @@ func NewStopGuard(st *store.Store, onBlock func(reason string, consecutive int32
 			}
 			return agentcore.StopDecision{Allow: false, Escalate: true}
 		}
-		inject := blockMessage(st, progress)
+		inject := blockMessage(st, progress, reviewTasks)
 		if progress != nil && len(progress.PendingRewrites) > 0 {
 			inject = fmt.Sprintf("禁止结束对话。待重写队列未清：%v，请立即调 writer 处理。", progress.PendingRewrites)
 		}
@@ -76,9 +84,17 @@ func NewStopGuard(st *store.Store, onBlock func(reason string, consecutive int32
 	}
 }
 
-func blockMessage(st *store.Store, progress *domain.Progress) string {
+func blockMessage(st *store.Store, progress *domain.Progress, reviewTasks *flow.PlanningReviewTaskPreparer) string {
 	if progress != nil {
 		if instruction := flow.RouteResume(flow.LoadState(st)); instruction != nil {
+			if instruction.PlanningReview != nil {
+				prepared, err := reviewTasks.PrepareActive(instruction)
+				if err != nil {
+					slog.Warn("stop_guard deferred planning review to Host dispatcher", "module", "host.reminder", "err", err)
+					return "Planning review requires a fresh Host authorization. Do not dispatch Editor or guess review_id; return control to the Host Dispatcher."
+				}
+				instruction = prepared
+			}
 			return "禁止结束对话。Phase 尚未 Complete；重新下达当前权威路由，请立即执行，不要只回复等待：\n" + flow.FormatMessage(instruction)
 		}
 	}

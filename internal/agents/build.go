@@ -23,6 +23,7 @@ import (
 	"github.com/voocel/ainovel-cli/internal/errs"
 	"github.com/voocel/ainovel-cli/internal/globalprompt"
 	"github.com/voocel/ainovel-cli/internal/host/adapt"
+	"github.com/voocel/ainovel-cli/internal/host/flow"
 	"github.com/voocel/ainovel-cli/internal/host/reminder"
 	"github.com/voocel/ainovel-cli/internal/modelprofile"
 	"github.com/voocel/ainovel-cli/internal/promptcompile"
@@ -151,6 +152,7 @@ func BuildCoordinator(
 	store *store.Store,
 	models *bootstrap.ModelSet,
 	bundle assets.Bundle,
+	planningReviews *tools.PlanningReviewRunRegistry,
 	recordUsage UsageRecorder,
 	onFlowBoundary FlowBoundaryHook,
 	onSummaryRetry SummaryRetryHook,
@@ -170,8 +172,9 @@ func BuildCoordinator(
 		Role:           domain.SimulationRoleWriter,
 	})
 	editorContextTool := tools.NewContextToolWithOptions(store, bundle.References, cfg.Style, tools.ContextToolOptions{
-		SimulationMode: cfg.EffectiveSimulationMode(),
-		Role:           domain.SimulationRoleEditor,
+		SimulationMode:  cfg.EffectiveSimulationMode(),
+		Role:            domain.SimulationRoleEditor,
+		PlanningReviews: planningReviews,
 	})
 	// 用户规则服务：归一化各来源 → 确定性合并 → 落盘本书快照。Coordinator 的
 	// save_user_rules 工具复用它做运行中更新；归一化用 Default 模型（与 Host 开书侧一致）。
@@ -200,7 +203,7 @@ func BuildCoordinator(
 		editorContextTool,
 		readChapter,
 		revisionFenceWrites(store.Revisions, tools.NewCheckSimulationTool(simulationCheck)),
-		revisionFenceWrites(store.Revisions, tools.NewSaveOriginalPlanningAuditTool(store)),
+		revisionFenceWrites(store.Revisions, tools.NewSaveOriginalPlanningAuditTool(store, planningReviews)),
 		revisionFenceWrites(store.Revisions, tools.NewSaveReviewTool(store)),
 		revisionFenceWrites(store.Revisions, tools.NewSaveArcSummaryTool(store)),
 		revisionFenceWrites(store.Revisions, tools.NewSaveVolumeSummaryTool(store)),
@@ -556,7 +559,9 @@ func BuildCoordinator(
 		agentcore.WithMaxToolErrors(0),
 		agentcore.WithMaxRetries(subagentMaxRetries),
 		agentcore.WithContextManager(newLatestHostTurnContextManager(coordinatorEngine)),
-		agentcore.WithStopGuard(reminder.NewStopGuard(store, nil)),
+		agentcore.WithStopGuard(reminder.NewStopGuard(
+			store, nil, flow.NewPlanningReviewTaskPreparer(planningReviews),
+		)),
 		agentcore.WithMiddlewares(flowBoundaryMiddleware(onFlowBoundary)),
 		// phase=complete 时硬拦截 subagent 派发，防止 Writer 死循环。
 		agentcore.WithToolGate(combineToolGates(

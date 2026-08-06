@@ -789,21 +789,52 @@ func compactLayeredOutlineForPlanningReviewVolumes(
 	fromVolume int,
 	toVolume int,
 ) []map[string]any {
-	focus := make(map[int]bool, max(toVolume-fromVolume+3, 1))
+	selected := make(map[int]bool, max(toVolume-fromVolume+1, 1))
 	if fromVolume == 0 && toVolume == 0 {
 		// Whole-book review consumes the already-passed batch reports supplied
 		// by Host. Keep the opening and ending books detailed and represent the
 		// complete middle as a stable index.
 		if len(volumes) > 0 {
-			focus[volumes[0].Index] = true
-			focus[volumes[len(volumes)-1].Index] = true
+			selected[volumes[0].Index] = true
+			selected[volumes[len(volumes)-1].Index] = true
 		}
 	} else {
 		for index := fromVolume; index <= toVolume; index++ {
-			focus[index] = true
+			selected[index] = true
 		}
 	}
-	return compactLayeredOutlineWithFocus(volumes, progress, focus)
+	included := includeAdjacentVolumes(volumes, selected)
+	return compactLayeredOutlineWithSelection(volumes, progress, included, selected)
+}
+
+func compactLayeredOutlineForPlanningVolume(
+	volumes []domain.VolumeOutline,
+	progress *domain.Progress,
+	targetVolume int,
+) []map[string]any {
+	selected := map[int]bool{targetVolume: true}
+	included := includeAdjacentVolumes(volumes, selected)
+	return compactLayeredOutlineWithSelection(volumes, progress, included, selected)
+}
+
+func includeAdjacentVolumes(volumes []domain.VolumeOutline, selected map[int]bool) map[int]bool {
+	included := make(map[int]bool, len(selected)+2)
+	available := make(map[int]bool, len(volumes))
+	for _, volume := range volumes {
+		available[volume.Index] = true
+	}
+	for volume := range selected {
+		if available[volume] {
+			included[volume] = true
+		}
+		if available[volume-1] {
+			included[volume-1] = true
+		}
+		if available[volume+1] {
+			included[volume+1] = true
+		}
+	}
+	return included
 }
 
 func compactLayeredOutlineWithFocus(
@@ -811,7 +842,16 @@ func compactLayeredOutlineWithFocus(
 	progress *domain.Progress,
 	focus map[int]bool,
 ) []map[string]any {
-	out := make([]map[string]any, 0, len(focus))
+	return compactLayeredOutlineWithSelection(volumes, progress, focus, nil)
+}
+
+func compactLayeredOutlineWithSelection(
+	volumes []domain.VolumeOutline,
+	progress *domain.Progress,
+	included map[int]bool,
+	selected map[int]bool,
+) []map[string]any {
+	out := make([]map[string]any, 0, len(included))
 	globalChapter := 1
 	currentChapter := 0
 	currentVolume := 0
@@ -834,14 +874,20 @@ func compactLayeredOutlineWithFocus(
 				volumeChapterCount += arc.EstimatedChapters
 			}
 		}
-		if !focus[volume.Index] {
+		if !included[volume.Index] {
 			globalChapter += volumeChapterCount
 			continue
 		}
+		title := truncateRunes(volume.Title, 80)
+		theme := truncateRunes(volume.Theme, maxContextSummaryRunes)
+		if selected[volume.Index] {
+			title = volume.Title
+			theme = volume.Theme
+		}
 		volumePayload := map[string]any{
 			"index": volume.Index,
-			"title": truncateRunes(volume.Title, 80),
-			"theme": truncateRunes(volume.Theme, maxContextSummaryRunes),
+			"title": title,
+			"theme": theme,
 		}
 		arcs := make([]map[string]any, 0, len(volume.Arcs))
 		for _, arc := range volume.Arcs {
@@ -851,14 +897,18 @@ func compactLayeredOutlineWithFocus(
 			}
 			arcStart := globalChapter
 			arcEnd := globalChapter + max(chapterCount-1, 0)
-			goalLimit := 30
-			if volume.Index == currentVolume && arc.Index == currentArc {
-				goalLimit = maxContextSummaryRunes
+			arcTitle := truncateRunes(arc.Title, 40)
+			arcGoal := truncateRunes(arc.Goal, 30)
+			if selected[volume.Index] {
+				arcTitle = arc.Title
+				arcGoal = arc.Goal
+			} else if volume.Index == currentVolume && arc.Index == currentArc {
+				arcGoal = truncateRunes(arc.Goal, maxContextSummaryRunes)
 			}
 			arcPayload := map[string]any{
 				"index":         arc.Index,
-				"title":         truncateRunes(arc.Title, 40),
-				"goal":          truncateRunes(arc.Goal, goalLimit),
+				"title":         arcTitle,
+				"goal":          arcGoal,
 				"from":          arcStart,
 				"to":            arcEnd,
 				"chapter_count": chapterCount,

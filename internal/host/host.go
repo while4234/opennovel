@@ -175,7 +175,8 @@ func New(cfg bootstrap.Config, bundle assets.Bundle) (*Host, error) {
 
 	var router *flow.Dispatcher
 	var budget *BudgetSentinel
-	coordinator, characterAgent, askUser, restore, coordinatorCtxMgr, applyThinking, buildErr := agents.BuildCoordinator(cfg, store, models, bundle, usage.Record, func(string) {
+	planningReviews := tools.NewPlanningReviewRunRegistry()
+	coordinator, characterAgent, askUser, restore, coordinatorCtxMgr, applyThinking, buildErr := agents.BuildCoordinator(cfg, store, models, bundle, planningReviews, usage.Record, func(string) {
 		if budget != nil && budget.HandleBoundary() {
 			return
 		}
@@ -273,7 +274,7 @@ func New(cfg bootstrap.Config, bundle assets.Bundle) (*Host, error) {
 			h.notifier.Send(notify.Notification{Kind: "budget", Level: "warn", Title: "ainovel: 预算", Body: blind})
 		})
 	}
-	h.router = flow.NewDispatcher(coordinator, store)
+	h.router = flow.NewDispatcher(coordinator, store, planningReviews)
 	router = h.router
 	// 重复指令告警：纯 telemetry，挂机时"模型可能在原地打转"值得喊人看一眼。
 	// 事件流与 notify 成对发出——notify 只是屏内事件的离屏副本（架构 §2.3）。
@@ -419,7 +420,11 @@ func (h *Host) StartPrepared(promptText string) error {
 	if err != nil {
 		return err
 	}
-	if err := h.coordinator.Prompt(runCtx, h.initialRoutePrompt(promptText, false)); err != nil {
+	initialPrompt, err := h.initialRoutePrompt(promptText, false)
+	if err != nil {
+		return fmt.Errorf("prepare initial route: %w", err)
+	}
+	if err := h.coordinator.Prompt(runCtx, initialPrompt); err != nil {
 		return fmt.Errorf("prompt: %w", err)
 	}
 
@@ -1146,7 +1151,11 @@ func (h *Host) resume(keepNormalFlowLease bool) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := h.coordinator.Prompt(runCtx, h.initialRoutePrompt(prompt, true)); err != nil {
+	initialPrompt, err := h.initialRoutePrompt(prompt, true)
+	if err != nil {
+		return "", fmt.Errorf("prepare resume route: %w", err)
+	}
+	if err := h.coordinator.Prompt(runCtx, initialPrompt); err != nil {
 		return "", fmt.Errorf("resume prompt: %w", err)
 	}
 	if pendingSteer != "" {
@@ -1169,16 +1178,20 @@ func (h *Host) resume(keepNormalFlowLease bool) (string, error) {
 // initialRoutePrompt binds the first Coordinator turn to the route computed
 // from durable state. Queueing this instruction after Prompt is racy because
 // Prompt starts the model loop asynchronously.
-func (h *Host) initialRoutePrompt(prompt string, resume bool) string {
+func (h *Host) initialRoutePrompt(prompt string, resume bool) (string, error) {
 	state := flow.LoadState(h.store)
 	instruction := flow.Route(state)
 	if resume {
 		instruction = flow.RouteResume(state)
 	}
 	if instruction == nil {
-		return prompt
+		return prompt, nil
 	}
-	return strings.TrimSpace(prompt) + "\n\n" + flow.FormatMessage(instruction)
+	prepared, err := h.router.PrepareInitialInstruction(instruction)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(prompt) + "\n\n" + flow.FormatMessage(prepared), nil
 }
 
 // finalizeLegacyCompletedBookBeforeResume closes the narrow restart gap where

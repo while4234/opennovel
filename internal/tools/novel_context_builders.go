@@ -2,6 +2,7 @@ package tools
 
 import (
 	"fmt"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -345,6 +346,164 @@ func (t *ContextTool) scopePlanningReviewContext(result map[string]any, volume, 
 	return nil
 }
 
+// scopeGeneralPlanningContext returns a stable aggregate used while building
+// Foundation artifacts and the whole-book compass. Canonical data remains on
+// disk; this projection keeps identities and signatures without serializing
+// every biography and reference template into each Architect turn.
+func (t *ContextTool) scopeGeneralPlanningContext(result map[string]any) error {
+	planning, _ := result["planning_memory"].(map[string]any)
+	if planning != nil {
+		if layered, err := t.store.Outline.LoadLayeredOutline(); err == nil && len(layered) > 0 {
+			progress, _ := t.store.Progress.Load()
+			planning["layered_outline"] = compactLayeredOutlineForPlanning(layered, progress)
+			planning["volume_history_index"] = compactVolumeHistoryIndex(layered)
+			planning["volume_history_index_schema"] = []string{"index", "title", "chapter_count", "arc_count"}
+			planning["volume_theme_milestones"] = compactVolumeThemeMilestones(layered)
+			planning["volume_theme_milestones_schema"] = []string{"index", "theme"}
+		}
+		delete(planning, "volume_summaries")
+	}
+
+	if err := t.compactPlanningFoundation(result, planning); err != nil {
+		return err
+	}
+	if foundation, err := t.store.Foundation.Load(); err == nil && strings.TrimSpace(foundation.Premise) == "" {
+		compactPrePremisePlanning(result)
+	}
+	result["context_profile"] = "planning"
+	return nil
+}
+
+func compactPrePremisePlanning(result map[string]any) {
+	foundation, _ := result["foundation_memory"].(map[string]any)
+	if foundation != nil {
+		if characters, ok := foundation["characters"].([]map[string]any); ok {
+			identities := make([]map[string]any, 0, len(characters))
+			for _, character := range characters {
+				identities = append(identities, map[string]any{
+					"id":      character["id"],
+					"name":    character["name"],
+					"role":    character["role"],
+					"tier":    character["tier"],
+					"faction": character["faction"],
+				})
+			}
+			foundation["characters"] = identities
+		}
+		if relationships, ok := foundation["planned_relationships"].([][]any); ok {
+			index := make([][]any, 0, len(relationships))
+			for _, relationship := range relationships {
+				if len(relationship) >= 4 {
+					index = append(index, relationship[:4])
+				}
+			}
+			foundation["planned_relationships"] = index
+			foundation["relationship_schema"] = []string{"id", "source_character_id", "target_character_id", "type"}
+		}
+	}
+	// Before the premise exists, the complete user-confirmed creative brief is
+	// the source of truth. Embedded templates are already represented by the
+	// Architect system prompt and must not displace that canonical input.
+	delete(result, "reference_pack")
+}
+
+// scopePlanningVolumeContext is the bounded Architect view for creating,
+// appending, or repairing one volume skeleton. It includes the target and
+// adjacent volume contracts plus a complete stable index for the rest.
+func (t *ContextTool) scopePlanningVolumeContext(result map[string]any, volume int) error {
+	if volume <= 0 {
+		return fmt.Errorf("planning_volume requires a positive volume")
+	}
+	layered, err := t.store.Outline.LoadLayeredOutline()
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("load layered outline for planning_volume: %w", err)
+	}
+	maxTarget := len(layered) + 1
+	if volume > maxTarget {
+		return fmt.Errorf("planning_volume target %d is outside existing or next volume range 1-%d", volume, maxTarget)
+	}
+
+	planning, _ := result["planning_memory"].(map[string]any)
+	if planning == nil {
+		planning = make(map[string]any)
+		result["planning_memory"] = planning
+	}
+	progress, _ := t.store.Progress.Load()
+	planning["layered_outline"] = compactLayeredOutlineForPlanningVolume(layered, progress, volume)
+	planning["volume_history_index"] = compactVolumeHistoryIndex(layered)
+	planning["volume_history_index_schema"] = []string{"index", "title", "chapter_count", "arc_count"}
+	planning["volume_theme_milestones"] = compactVolumeThemeMilestones(layered)
+	planning["volume_theme_milestones_schema"] = []string{"index", "theme"}
+	planning["volume_scope"] = map[string]any{
+		"target_volume":   volume,
+		"target_exists":   volume <= len(layered),
+		"previous_volume": max(volume-1, 0),
+		"next_existing_volume": func() int {
+			if volume < len(layered) {
+				return volume + 1
+			}
+			return 0
+		}(),
+		"content_path": "planning_memory.layered_outline",
+	}
+	if audits, loadErr := t.store.OriginalPlanningAudits.Load(); loadErr == nil {
+		planning["planning_audit_index"] = compactSkeletonAuditIndex(audits, volume, volume)
+	}
+	delete(planning, "volume_summaries")
+	delete(planning, "completion_signals")
+
+	if err := t.compactPlanningFoundation(result, planning); err != nil {
+		return err
+	}
+	delete(result, "reference_pack")
+	result["context_profile"] = "planning_volume"
+	return nil
+}
+
+func (t *ContextTool) compactPlanningFoundation(result map[string]any, planning map[string]any) error {
+	canonical, err := t.store.Foundation.Load()
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("load Foundation for planning context: %w", err)
+	}
+	foundation, _ := result["foundation_memory"].(map[string]any)
+	if foundation == nil {
+		foundation = make(map[string]any)
+		result["foundation_memory"] = foundation
+	}
+	focused := planningReviewCharacterFocus(canonical.Characters, planning)
+	foundation["character_index"] = compactCharacterIndexForPlanningReview(canonical.Characters)
+	foundation["character_index_schema"] = []string{"id", "name", "role", "tier", "faction"}
+	foundation["characters"] = compactCharacterContractsForPlanningReview(canonical.Characters, focused)
+	foundation["planned_relationships"] = compactRelationshipsForPlanningAudit(canonical.Relationships)
+	foundation["relationship_schema"] = []string{
+		"id", "source_character_id", "target_character_id", "type", "direction",
+		"status", "label", "description", "since", "tags", "constraints",
+	}
+	foundation["world_rules"] = compactWorldRulesForPlanningAudit(canonical.WorldRules)
+	foundation["world_rule_schema"] = []string{"id", "category", "strength", "rule", "boundary"}
+	hardRuleIDs := make([]string, 0, len(canonical.WorldRules))
+	for _, rule := range canonical.WorldRules {
+		if rule.Strength == domain.WorldRuleStrengthHard {
+			hardRuleIDs = append(hardRuleIDs, rule.ID)
+		}
+	}
+	if len(hardRuleIDs) > 0 {
+		foundation["hard_world_rule_constraints"] = hardRuleIDs
+	}
+	foundation["relationship_contract"] = "planned_relationships are pre-writing canonical intent; relationship_state is runtime chapter evidence and must never replace or rewrite the plan"
+	foundation["foundation_status"] = t.foundationStatus()
+	if canonical.Revision > 0 {
+		foundation["foundation_revision"] = canonical.Revision
+		if signature, signatureErr := domain.FoundationAuditSignature(canonical); signatureErr == nil {
+			foundation["foundation_audit_signature"] = signature
+		}
+	}
+	delete(foundation, "character_snapshots")
+	delete(foundation, "foreshadow_ledger")
+	delete(foundation, "premise_structure")
+	return nil
+}
+
 // scopePlanningAuditContext builds one self-contained evidence pack for a
 // detailed arc audit or a bounded repair. It combines compact canonical facts
 // with the exact 1-4 chapter window in one tool result, so Editor quality does
@@ -417,6 +576,15 @@ func (t *ContextTool) scopePlanningAuditContext(
 
 	planning, _ := result["planning_memory"].(map[string]any)
 	if planning != nil {
+		// Detailed audit carries the exact selected chapters in result["outline"].
+		// Keep only a compact target-volume skeleton here so it does not compete
+		// with those chapter facts for the planning_audit budget.
+		progress, _ := t.store.Progress.Load()
+		planning["layered_outline"] = compactLayeredOutlineWithFocus(
+			layered,
+			progress,
+			map[int]bool{volume: true},
+		)
 		removePlanningReviewNearbyChapters(planning["layered_outline"])
 		delete(planning, "volume_summaries")
 		delete(planning, "completion_signals")

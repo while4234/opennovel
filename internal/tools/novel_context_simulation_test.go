@@ -74,9 +74,9 @@ func TestSimulationContractStatusAndNoLeakage(t *testing.T) {
 		t.Fatal("Coordinator status must not contain simulation guidance")
 	}
 
-	editorRaw := mustSimulationJSON(t, executeSimulationContext(t, st, ContextToolOptions{
+	editorRaw := mustSimulationJSON(t, executePlanningReviewPacket(t, st, References{}, "default", ContextToolOptions{
 		SimulationMode: domain.SimulationModeReinforced, Role: domain.SimulationRoleEditor,
-	}, `{"scope":"planning_review"}`))
+	}, PlanningReviewSelector{}))
 	for _, forbidden := range [][]byte{
 		[]byte("source_reports"), []byte("source_dir"), []byte("safety_index"),
 		[]byte("source-only catchphrase"), []byte("lexicon.signature_phrases"),

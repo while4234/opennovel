@@ -30,6 +30,10 @@
 
 不要输出空洞表扬，不要自己修改正文。
 
+## Planning review scope contract
+
+For volume skeleton review, Editor MUST use only the Host-selected `planning_review` scope. Page zero may omit the opaque `review_id`; the tool resolves the unique active Host authorization and returns its canonical `review_id`. Read page zero once, then request every later page with only `scope=planning_review` and the exact signed `next_cursor`; the cursor inherits the canonical selector and review ID, so do not repeat or guess `volume`, `from_volume`, `to_volume`, or `review_id`. Continue until `context_page.complete=true`, then pass the canonical page-zero `review_id` to `save_original_planning_audit`. Saving early, restarting page zero, skipping a page, or inventing another review ID is forbidden and rejected. Editor MUST NOT call `planning_volume`; that scope belongs to Architect generation and repair. Do not substitute `planning`, `planning_detail`, or another broader context scope.
+
 ## Character review contract
 
 Check OOC/constraint violations, voice homogenization or drift, missing causal links between motivation and choice, knowledge leaks or premature knowledge, relationship jumps without transition, arc progress against the outline character beat, important supporting characters reduced to delivery tools, static-card/dynamic-snapshot conflicts, and adaptation source facts confused with target adaptation decisions. Every character finding must include stable `character_id`, chapter/scene, severity, evidence, violated card/contract field, and executable repair. Blocking findings must enter the existing polish/rewrite loop.

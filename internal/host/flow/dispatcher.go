@@ -2,6 +2,8 @@ package flow
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -10,12 +12,15 @@ import (
 
 	"github.com/voocel/agentcore"
 	storepkg "github.com/voocel/ainovel-cli/internal/store"
+	"github.com/voocel/ainovel-cli/internal/tools"
 )
 
 // Dispatcher 在子代理返回的同步工具边界计算路由并下达 Host 指令。
 type Dispatcher struct {
-	coordinator *agentcore.Agent
-	store       *storepkg.Store
+	coordinator     *agentcore.Agent
+	store           *storepkg.Store
+	planningReviews *tools.PlanningReviewRunRegistry
+	reviewTasks     *PlanningReviewTaskPreparer
 
 	enabled        atomic.Bool // 由 Host 控制是否派发（启动完成前应关）
 	resumeRecovery atomic.Bool
@@ -43,8 +48,15 @@ type Dispatcher struct {
 const repeatNotifyAt = 3
 
 // NewDispatcher 创建 Dispatcher。
-func NewDispatcher(coordinator *agentcore.Agent, store *storepkg.Store) *Dispatcher {
-	d := &Dispatcher{coordinator: coordinator, store: store}
+func NewDispatcher(coordinator *agentcore.Agent, store *storepkg.Store, registries ...*tools.PlanningReviewRunRegistry) *Dispatcher {
+	var planningReviews *tools.PlanningReviewRunRegistry
+	if len(registries) > 0 {
+		planningReviews = registries[0]
+	}
+	d := &Dispatcher{
+		coordinator: coordinator, store: store, planningReviews: planningReviews,
+		reviewTasks: NewPlanningReviewTaskPreparer(planningReviews),
+	}
 	return d
 }
 
@@ -57,6 +69,7 @@ func (d *Dispatcher) Enable() { d.enabled.Store(true) }
 func (d *Dispatcher) Disable() {
 	if d != nil {
 		d.enabled.Store(false)
+		d.planningReviews.Clear()
 	}
 }
 
@@ -136,6 +149,13 @@ func (d *Dispatcher) route(state State) *Instruction {
 
 func (d *Dispatcher) dispatchFenced(inst *Instruction, fence storepkg.RevisionFence, asFollowUp bool) error {
 	n := d.trackRepeat(inst)
+	if inst.PlanningReview != nil {
+		var err error
+		inst, err = d.authorizePlanningReviewInstruction(inst)
+		if err != nil {
+			return err
+		}
+	}
 	// Writer 任务：在派发同一刻把章节标为进行中，UI 右侧大纲立即反映"▸ 进行中"，
 	// 不用等 plan_chapter 真正执行（plan_chapter 会再调一次 StartChapter，幂等）。
 	if inst.Agent == "writer" && inst.Chapter > 0 && d.store != nil {
@@ -161,6 +181,22 @@ func (d *Dispatcher) dispatchFenced(inst *Instruction, fence storepkg.RevisionFe
 	}
 	d.coordinator.Steer(agentcore.UserMsg(msg))
 	return nil
+}
+
+func (d *Dispatcher) authorizePlanningReviewInstruction(inst *Instruction) (*Instruction, error) {
+	return d.reviewTasks.PrepareNew(inst)
+}
+
+// PrepareInitialInstruction authorizes a route embedded in the first Host
+// prompt. This path is used by both manual and scheduled Resume.
+func (d *Dispatcher) PrepareInitialInstruction(inst *Instruction) (*Instruction, error) {
+	if d == nil {
+		if inst != nil && inst.PlanningReview != nil {
+			return nil, fmt.Errorf("planning review dispatcher is not configured")
+		}
+		return inst, nil
+	}
+	return d.reviewTasks.PrepareNew(inst)
 }
 
 // formatDispatchMessage 组装下达给 Coordinator 的指令消息。
@@ -208,8 +244,17 @@ func (d *Dispatcher) trackRepeat(next *Instruction) int {
 // 确保恢复或新建后首条指令以"第 1 次"语义下达。
 func (d *Dispatcher) ResetRepeat() {
 	d.resumeRecovery.Store(false)
+	d.planningReviews.Clear()
 	d.lastMu.Lock()
 	defer d.lastMu.Unlock()
 	d.lastSent = nil
 	d.repeats = 0
+}
+
+func newPlanningReviewDispatchID() (string, error) {
+	var random [16]byte
+	if _, err := rand.Read(random[:]); err != nil {
+		return "", fmt.Errorf("create planning review dispatch ID: %w", err)
+	}
+	return "planning-review-" + hex.EncodeToString(random[:]), nil
 }

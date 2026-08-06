@@ -1,6 +1,8 @@
 package tools
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"regexp"
 	"slices"
@@ -45,6 +47,33 @@ func newCreativeBriefContract(brief string) *creativeBriefContract {
 		IdentityLocks: parseCreativeBriefIdentity(brief),
 		Usage:         creativeBriefUsage,
 	}
+}
+
+func (t *ContextTool) compactEstablishedCreativeBrief(result map[string]any) bool {
+	foundation, err := t.store.Foundation.Load()
+	if err != nil || foundation.Revision <= 0 || strings.TrimSpace(foundation.Premise) == "" {
+		return false
+	}
+	planning, _ := result["planning_memory"].(map[string]any)
+	if planning == nil {
+		return false
+	}
+	contract, ok := planning["creative_brief"].(*creativeBriefContract)
+	if !ok || contract == nil || strings.TrimSpace(contract.Content) == "" {
+		return false
+	}
+	digest := sha256.Sum256([]byte(contract.Content))
+	contentDigest := hex.EncodeToString(digest[:])
+	contentSource := "canonical Foundation artifacts derived from this approved brief"
+	planning["creative_brief"] = map[string]any{
+		"source":         contract.Source,
+		"authority":      contract.Authority,
+		"identity_locks": contract.IdentityLocks,
+		"usage":          contract.Usage,
+		"content_digest": contentDigest,
+		"content_source": contentSource,
+	}
+	return contentDigest != "" && contentSource != ""
 }
 
 func parseCreativeBriefIdentity(brief string) creativeBriefIdentity {

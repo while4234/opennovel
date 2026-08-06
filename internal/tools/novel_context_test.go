@@ -1151,15 +1151,10 @@ func TestContextToolPlanningReviewIsEditorBoundedWithoutDroppingCanonicalFacts(t
 		t.Fatal(err)
 	}
 
-	raw, err := NewContextTool(st, References{}, "default").Execute(
-		context.Background(),
-		json.RawMessage(`{"scope":"planning_review","volume":80}`),
-	)
+	packet := executePlanningReviewPacket(t, st, References{}, "default", ContextToolOptions{}, PlanningReviewSelector{Volume: 80})
+	raw, err := json.Marshal(packet)
 	if err != nil {
 		t.Fatal(err)
-	}
-	if len(raw) > planningReviewContextSourceBytes {
-		t.Fatalf("planning review context = %d bytes, want <= %d", len(raw), planningReviewContextSourceBytes)
 	}
 	text := string(raw)
 	for _, required := range []string{`"character-24"`, `"rule-25"`, `[160,`, `"index":80`, `"arcs"`} {

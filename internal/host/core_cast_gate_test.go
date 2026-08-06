@@ -55,7 +55,10 @@ func TestInitialResumePromptRoutesPendingOriginalWorkflowToCharacter(t *testing.
 	}
 
 	h := &Host{store: st}
-	prompt := h.initialRoutePrompt("resume", true)
+	prompt, err := h.initialRoutePrompt("resume", true)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !strings.Contains(prompt, "subagent(character") {
 		t.Fatalf("resume prompt did not bind Character route: %q", prompt)
 	}
