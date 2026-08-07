@@ -38,6 +38,7 @@ type ProjectManifest struct {
 
 type ProjectStore struct {
 	RuntimeRoot string
+	styleSource assets.StyleSource
 	openMu      sync.Mutex
 	configMu    sync.Mutex
 	startupErr  error
@@ -89,7 +90,11 @@ func (s *ProjectStore) SaveProjectScheduledResumeEnabled(manifest ProjectManifes
 }
 
 func NewProjectStore(runtimeRoot string) *ProjectStore {
-	store := &ProjectStore{RuntimeRoot: filepath.Clean(runtimeRoot)}
+	return newProjectStore(runtimeRoot, assets.EmbeddedStyleSource())
+}
+
+func newProjectStore(runtimeRoot string, styleSource assets.StyleSource) *ProjectStore {
+	store := &ProjectStore{RuntimeRoot: filepath.Clean(runtimeRoot), styleSource: styleSource}
 	legacyMigrationMu.Lock()
 	store.startupErr = store.recoverLegacyMigrationJournals()
 	legacyMigrationMu.Unlock()
@@ -116,7 +121,7 @@ func (s *ProjectStore) CreateProjectWithStyle(name, style string) (ProjectManife
 		return ProjectManifest{}, err
 	}
 	style = assets.NormalizeStyleID(style)
-	if !assets.HasStyle(style) {
+	if !s.styleSource.HasStyle(style) {
 		return ProjectManifest{}, fmt.Errorf("unknown style %q", style)
 	}
 	manifest, err := s.createProject(name)
@@ -885,7 +890,7 @@ func removeAllWithRetry(path string) error {
 	return err
 }
 
-func (s *ProjectStore) OpenProjectHost(cfg bootstrap.Config, bundle assets.Bundle, manifest ProjectManifest) (*host.Host, error) {
+func (s *ProjectStore) OpenProjectHost(cfg bootstrap.Config, _ assets.Bundle, manifest ProjectManifest) (*host.Host, error) {
 	if err := s.requireStartupRecovery(); err != nil {
 		return nil, err
 	}
@@ -904,7 +909,7 @@ func (s *ProjectStore) OpenProjectHost(cfg bootstrap.Config, bundle assets.Bundl
 		cfg = bootstrap.MergeConfig(cfg, projectCfg)
 	}
 	cfg.Style = assets.NormalizeStyleID(cfg.Style)
-	bundle = assets.Load(cfg.Style)
+	bundle := s.styleSource.Load(cfg.Style)
 	cfg.OutputDir = manifest.OutputDir
 	cfg.PersistPath = projectConfigPath
 	cfg.PersistProjectOverlay = true
@@ -1253,7 +1258,7 @@ func (s *ProjectStore) SaveProjectStyle(manifest ProjectManifest, style string) 
 
 func (s *ProjectStore) saveProjectStyle(manifest ProjectManifest, style string) error {
 	style = assets.NormalizeStyleID(style)
-	if !assets.HasStyle(style) {
+	if !s.styleSource.HasStyle(style) {
 		return fmt.Errorf("unknown style %q", style)
 	}
 	cfg, found, err := s.loadProjectConfig(manifest)

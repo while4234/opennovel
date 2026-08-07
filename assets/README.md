@@ -11,6 +11,8 @@
 | `rules/` | 已废弃的旧内置规则目录；机械基线已迁到代码，用户规则来自 `~/.ainovel/rules/*.md` / `./.ainovel/rules/*.md` 的自然语言快照 | `userrules.Service` 归一化为 `meta/user_rules.json`；`novel_context` 注入；`commit_chapter` 检查 | 内置基线见 `internal/rules/snapshot.go` 的 `SystemDefaults()`；用户 `.md` 零格式、零 YAML，按自然语言归一化 |
 | `styles/<style>.md` | 题材写作风格指令 | 拼进 **writer** 的 system prompt（`agents/build.go`） | 文件名即 `config.style` 取值。与 `references/genres/<style>/` 是同一题材概念的两种载体：前者是风格指令，后者是知识材料 |
 
+Web 开发模式会在每次请求文风目录时重新扫描仓库的 `assets/styles/*.md`，并用磁盘内容覆盖同名内嵌文风；因此新增或修改 Markdown 后点击“刷新”即可生效。发布包找不到仓库目录时继续使用编译期内嵌文风。
+
 ## 新内容归属判断（五问）
 
 1. 这个流程必须被**保证**？→ 不写 prompt，写代码约束（StopAfterTools / 工具守卫 / Flow Router）

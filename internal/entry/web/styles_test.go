@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -35,6 +36,61 @@ func TestStylesEndpointReturnsMarkdownHeadingLabels(t *testing.T) {
 	}
 	if labels["fantasy"] != "奇幻冒险风格" || labels["default"] != "通用写作风格" {
 		t.Fatalf("style labels = %+v", labels)
+	}
+}
+
+func TestStylesEndpointRefreshDiscoversRuntimeMarkdown(t *testing.T) {
+	stylesDir := t.TempDir()
+	server := newServer(
+		testWebConfig(t),
+		assets.Load("default"),
+		filepath.Join(testTempDir(t), "runtime"),
+		assets.NewStyleSource(stylesDir),
+	)
+	defer server.Close()
+
+	requestCatalog := func() apiStylesResponse {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodGet, "/api/styles", nil)
+		rec := httptest.NewRecorder()
+		server.Handler().ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("styles status = %d body=%s", rec.Code, rec.Body.String())
+		}
+		var body apiStylesResponse
+		if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+			t.Fatalf("decode styles: %v", err)
+		}
+		return body
+	}
+	hasStyle := func(catalog apiStylesResponse, id string) bool {
+		for _, item := range catalog.Styles {
+			if item.ID == id {
+				return true
+			}
+		}
+		return false
+	}
+
+	if hasStyle(requestCatalog(), "runtime-style") {
+		t.Fatal("runtime style should not exist before refresh input is created")
+	}
+	if err := os.WriteFile(
+		filepath.Join(stylesDir, "runtime-style.md"),
+		[]byte("## Runtime Style\nruntime body"),
+		0o644,
+	); err != nil {
+		t.Fatalf("write runtime style: %v", err)
+	}
+	if !hasStyle(requestCatalog(), "runtime-style") {
+		t.Fatal("refreshed catalog should discover runtime style")
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/projects", bytes.NewBufferString(`{"name":"Runtime Style Project","style":"runtime-style"}`))
+	rec := httptest.NewRecorder()
+	server.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create runtime style project status = %d body=%s", rec.Code, rec.Body.String())
 	}
 }
 

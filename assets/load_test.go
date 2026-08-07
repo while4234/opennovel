@@ -1,6 +1,8 @@
 package assets
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -157,5 +159,61 @@ func TestStyleCatalogFromFSDiscoversAdditionalMarkdown(t *testing.T) {
 	}
 	if _, ok := labelsByID["file"]; ok {
 		t.Fatalf("nested markdown file should be ignored: %+v", catalog)
+	}
+}
+
+func TestStyleSourceRefreshesRuntimeMarkdown(t *testing.T) {
+	dir := t.TempDir()
+	source := NewStyleSource(dir)
+
+	if source.HasStyle("runtime-style") {
+		t.Fatal("runtime style should not exist before its Markdown file is created")
+	}
+	path := filepath.Join(dir, "runtime-style.md")
+	if err := os.WriteFile(path, []byte("## Runtime Style\nruntime body"), 0o644); err != nil {
+		t.Fatalf("write runtime style: %v", err)
+	}
+
+	if !source.HasStyle("runtime-style") {
+		t.Fatal("runtime style should be discovered without rebuilding")
+	}
+	if got := source.Load("runtime-style").Styles["runtime-style"]; got != "## Runtime Style\nruntime body" {
+		t.Fatalf("runtime style content = %q", got)
+	}
+	if !source.HasStyle("default") {
+		t.Fatal("embedded styles should remain available")
+	}
+}
+
+func TestStyleSourceRuntimeMarkdownOverridesEmbeddedStyle(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "default.md")
+	if err := os.WriteFile(path, []byte("## Runtime Default\noverride body"), 0o644); err != nil {
+		t.Fatalf("write runtime default: %v", err)
+	}
+
+	source := NewStyleSource(dir)
+	catalog := source.Catalog()
+	labelsByID := make(map[string]string, len(catalog))
+	for _, item := range catalog {
+		labelsByID[item.ID] = item.Label
+	}
+	if labelsByID["default"] != "Runtime Default" {
+		t.Fatalf("default label = %q, want runtime override", labelsByID["default"])
+	}
+	if got := source.Load("default").Styles["default"]; got != "## Runtime Default\noverride body" {
+		t.Fatalf("default style content = %q", got)
+	}
+}
+
+func TestStyleSourceAcceptsUppercaseMarkdownExtension(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "uppercase.MD")
+	if err := os.WriteFile(path, []byte("## Uppercase Extension"), 0o644); err != nil {
+		t.Fatalf("write uppercase style: %v", err)
+	}
+
+	if !NewStyleSource(dir).HasStyle("uppercase") {
+		t.Fatal("uppercase Markdown extension should use the extension-free style id")
 	}
 }

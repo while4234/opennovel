@@ -20,7 +20,7 @@ func (s *Server) handleStyles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, apiStylesResponse{
-		Styles:       assets.StyleCatalog(),
+		Styles:       s.styleSource.Catalog(),
 		DefaultStyle: s.defaultStyleID(),
 	})
 }
@@ -62,13 +62,13 @@ func (s *Server) handleProjectStyle(w http.ResponseWriter, r *http.Request, id s
 
 func (s *Server) defaultStyleID() string {
 	style := assets.NormalizeStyleID(s.currentConfig().Style)
-	if assets.HasStyle(style) {
+	if s.styleSource.HasStyle(style) {
 		return style
 	}
-	if assets.HasStyle("default") {
+	if s.styleSource.HasStyle("default") {
 		return "default"
 	}
-	catalog := assets.StyleCatalog()
+	catalog := s.styleSource.Catalog()
 	if len(catalog) == 0 {
 		return ""
 	}
@@ -81,7 +81,7 @@ func (s *Server) resolveStyleID(style string) (string, error) {
 		style = s.defaultStyleID()
 	}
 	style = assets.NormalizeStyleID(style)
-	if style == "" || !assets.HasStyle(style) {
+	if style == "" || !s.styleSource.HasStyle(style) {
 		return "", fmt.Errorf("unknown style %q", style)
 	}
 	return style, nil

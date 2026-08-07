@@ -4,6 +4,8 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"os"
+	"path"
 	"sort"
 	"strings"
 
@@ -55,6 +57,53 @@ type Bundle struct {
 type StyleDescriptor struct {
 	ID    string `json:"id"`
 	Label string `json:"label"`
+}
+
+// StyleSource merges runtime Markdown files over the embedded style defaults.
+// An empty directory keeps the release-safe embedded-only behavior.
+type StyleSource struct {
+	directory string
+}
+
+func NewStyleSource(directory string) StyleSource {
+	return StyleSource{directory: strings.TrimSpace(directory)}
+}
+
+func EmbeddedStyleSource() StyleSource {
+	return StyleSource{}
+}
+
+func (s StyleSource) Load(style string) Bundle {
+	bundle := Load(style)
+	for id, content := range s.runtimeStyles() {
+		bundle.Styles[id] = content
+	}
+	return bundle
+}
+
+func (s StyleSource) Catalog() []StyleDescriptor {
+	styles := loadStylesFromFS(stylesFS, "styles")
+	for id, content := range s.runtimeStyles() {
+		styles[id] = content
+	}
+	return styleCatalogFromStyles(styles)
+}
+
+func (s StyleSource) HasStyle(style string) bool {
+	style = NormalizeStyleID(style)
+	for _, item := range s.Catalog() {
+		if item.ID == style {
+			return true
+		}
+	}
+	return false
+}
+
+func (s StyleSource) runtimeStyles() map[string]string {
+	if s.directory == "" {
+		return nil
+	}
+	return loadStylesFromFS(os.DirFS(s.directory), ".")
 }
 
 // Load 返回指定风格对应的资源集合。
@@ -173,17 +222,21 @@ const simulationGuidance = `## 仿写契约
 旧 simulation_profile / simulation_mode 仅是由 simulation_effective 同源生成的迁移字段，不得独立解释。`
 
 func loadStyles() map[string]string {
+	return loadStylesFromFS(stylesFS, "styles")
+}
+
+func loadStylesFromFS(fsys fs.FS, dir string) map[string]string {
 	styles := make(map[string]string)
-	entries, err := stylesFS.ReadDir("styles")
+	entries, err := fs.ReadDir(fsys, dir)
 	if err != nil {
 		return styles
 	}
 	for _, e := range entries {
-		if e.IsDir() {
+		if e.IsDir() || !strings.HasSuffix(strings.ToLower(e.Name()), ".md") {
 			continue
 		}
-		name := strings.TrimSuffix(e.Name(), ".md")
-		data, err := stylesFS.ReadFile("styles/" + e.Name())
+		name := e.Name()[:len(e.Name())-len(".md")]
+		data, err := fs.ReadFile(fsys, path.Join(dir, e.Name()))
 		if err != nil {
 			continue
 		}
@@ -193,24 +246,13 @@ func loadStyles() map[string]string {
 }
 
 func styleCatalogFromFS(fsys fs.FS, dir string) []StyleDescriptor {
-	entries, err := fs.ReadDir(fsys, dir)
-	if err != nil {
-		return nil
-	}
-	styles := make([]StyleDescriptor, 0, len(entries))
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".md") {
-			continue
-		}
-		id := entry.Name()[:len(entry.Name())-len(".md")]
-		data, err := fs.ReadFile(fsys, dir+"/"+entry.Name())
-		if err != nil {
-			continue
-		}
-		styles = append(styles, StyleDescriptor{
-			ID:    id,
-			Label: styleLabel(id, string(data)),
-		})
+	return styleCatalogFromStyles(loadStylesFromFS(fsys, dir))
+}
+
+func styleCatalogFromStyles(contents map[string]string) []StyleDescriptor {
+	styles := make([]StyleDescriptor, 0, len(contents))
+	for id, content := range contents {
+		styles = append(styles, StyleDescriptor{ID: id, Label: styleLabel(id, content)})
 	}
 	sort.Slice(styles, func(i, j int) bool {
 		if styles[i].Label != styles[j].Label {

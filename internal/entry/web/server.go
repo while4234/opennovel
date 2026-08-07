@@ -41,6 +41,7 @@ type Server struct {
 	cfgMu            sync.RWMutex
 	cfg              bootstrap.Config
 	bundle           assets.Bundle
+	styleSource      assets.StyleSource
 	runtimeRoot      string
 	store            *ProjectStore
 	sessions         *SessionManager
@@ -90,7 +91,11 @@ func Run(ctx context.Context, cfg bootstrap.Config, bundle assets.Bundle, opts O
 	}
 	defer listener.Close()
 
-	app := NewServer(cfg, bundle, runtimeRoot)
+	styleSource := assets.EmbeddedStyleSource()
+	if repoRoot != "" {
+		styleSource = assets.NewStyleSource(filepath.Join(repoRoot, "assets", "styles"))
+	}
+	app := newServer(cfg, bundle, runtimeRoot, styleSource)
 	app.StartResumeScheduler(ctx)
 	defer app.Close()
 
@@ -130,14 +135,19 @@ func Run(ctx context.Context, cfg bootstrap.Config, bundle assets.Bundle, opts O
 }
 
 func NewServer(cfg bootstrap.Config, bundle assets.Bundle, runtimeRoot string) *Server {
+	return newServer(cfg, bundle, runtimeRoot, assets.EmbeddedStyleSource())
+}
+
+func newServer(cfg bootstrap.Config, bundle assets.Bundle, runtimeRoot string, styleSource assets.StyleSource) *Server {
 	if err := globalprompt.ReplaceOverrides(cfg.GlobalPrompts); err != nil {
 		slog.Warn("ignoring invalid global prompt overrides", "module", "web", "err", err)
 		_ = globalprompt.ReplaceOverrides(nil)
 	}
-	store := NewProjectStore(runtimeRoot)
+	store := newProjectStore(runtimeRoot, styleSource)
 	s := &Server{
 		cfg:              cfg,
 		bundle:           bundle,
+		styleSource:      styleSource,
 		runtimeRoot:      runtimeRoot,
 		store:            store,
 		libraries:        NewLibraryService(runtimeRoot),
