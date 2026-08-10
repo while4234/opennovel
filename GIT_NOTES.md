@@ -1,4 +1,4 @@
-﻿# Git Notes
+# Git Notes
 
 ## Repository Purpose
 
@@ -43,9 +43,15 @@ intentional changes are committed and pushed to the configured GitHub remote
 For this project, after each completed generation or development task that
 changes the running project, backend, or Web UI, rebuild/restart the local
 `ainovel-cli.exe web` service and explicitly tell the user to refresh the Web
-page. The normal local Web URL is `http://127.0.0.1:9898`.
+page. The normal local Web URL for this deployment is `http://127.0.0.1:9999`.
 
 ## Current Baseline
+- 2026-08-07 `this commit` `docs: record D-drive LAN deployment`: cloned the
+  upstream `main` branch into `D:\opennovel`, built all Web/runtime binaries,
+  launched port 9999 on `0.0.0.0` with runtime/profile data under
+  `D:\opennovel-runtime`, and verified loopback plus LAN-address HTTP 200.
+  Windows Firewall rule creation remains an elevated manual step; npm reported
+  four high-severity findings in the existing locked Web dependency tree.
 - 2026-07-31 `this commit` `fix: resume and complete legacy novels`: repairs
   confirmed Character bindings when only newly required gender metadata or
   user-rules evidence changed, creates a fail-closed legacy completion
@@ -75,7 +81,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   context. Planner calls now rely on their tokenizer-aware 40k-token compiler
   hard limit instead of a conflicting 60 KiB UTF-8 byte ceiling. Focused
   agents/adaptation tests plus full Host and tools packages pass; the repaired
-  Web service is healthy on port 9898 with both monitored test projects
+  Web service is healthy on port <legacy-port> with both monitored test projects
   resuming from their saved planning checkpoints.
 - 2026-07-30 `31d8a34` `fix: unify original character revision feedback`:
   distinguishes the pre-Foundation character-candidate gate from complete
@@ -122,7 +128,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   now require complete cards and an independent blocking review. Focused
   domain/tools/adapt/flow/store/host/Web regressions passed; the full Web suite
   retains unrelated rollback, novel-library, legacy-migration, and adaptation
-  session fixture failures. The rebuilt Web service is healthy on port 9898,
+  session fixture failures. The rebuilt Web service is healthy on port <legacy-port>,
   and the live `梦中的女孩` project visibly shows three complete reviewed cards,
   including `顾衡` as `新男主（主视角）` and `目标原创`.
 - 2026-07-30 `this commit` `fix: declutter foundation settings workspace`:
@@ -136,7 +142,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   moves 角色分析 and 角色审核 directly after 资料分析, removes the user-facing
   Agent advanced-route editor and provider-role selector, and keeps internal
   Agent routing as an inherited compatibility mechanism. Bootstrap/Web focused
-  tests, 374 Web tests, production build, and live port 9898 asset/API checks
+  tests, 374 Web tests, production build, and live port <legacy-port> asset/API checks
   passed.
 - 2026-07-30 `this commit` `fix: expose complete source foundation before cocreate`:
   source chapter analysis now extracts evidence-backed gender and complete
@@ -167,7 +173,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   changed SourceFoundation report and recursive-summary batching to enforce the
   structured-call 60 KiB limit against exact compiled request bytes, not only
   a rune estimate. Added a Chinese UTF-8 regression, rebuilt/restarted port
-  9898, and verified the real 17-chapter “梦中的女孩” upgrade split its formerly
+  <legacy-port>, and verified the real 17-chapter “梦中的女孩” upgrade split its formerly
   rejected single request into two valid report batches, completed its final
   summary, and synced the library. The pre-intent role-card tab now also
   displays all analyzed source roles as read-only evidence while keeping target
@@ -176,14 +182,14 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   rejects unversioned SourceFoundation reuse, incrementally upgrades legacy
   novel-library packages, exposes forced source reanalysis for completed
   sources, distinguishes source analysis from co-create briefing regeneration,
-  and deploys the rebuilt Web service on port 9898. Focused/full changed-package
+  and deploys the rebuilt Web service on port <legacy-port>. Focused/full changed-package
   Go tests, 370 Web tests, production build, and live HTTP/bundle checks passed.
   The project-environment full suite remains red only in the existing Windows
   legacy-migration temp-directory rename access-denied test, reproduced twice.
 - 2026-07-29 `5a1cea5d` `fix: activate reinforced simulation contracts`:
   fast-forwarded local `main` to the latest `origin/main`, rebuilt the
   production Web UI plus all three Go executables through `restart-web.cmd`,
-  replaced PID `33172` with PID `33424` on port 9898, and verified `/`,
+  replaced PID `33172` with PID `33424` on port <legacy-port>, and verified `/`,
   `/api/runtime`, and `/api/projects` return HTTP 200. The deployed CLI reports
   commit `5a1cea5dace142e9f45cb2ecd20c12a0e83915c0`.
 - 2026-07-29 `faad199` `fix: resume interrupted polishing gates`:
@@ -230,7 +236,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   requests only an 8-token `OK` response, but now consumes the stream until a
   terminal `done` event and rejects provider errors or streams that close
   early. Four focused Host regressions pass, the Web UI and Go executables
-  rebuild successfully, port 9898 ultimately restarts from that commit as PID
+  rebuild successfully, port <legacy-port> ultimately restarts from that commit as PID
   37920, and the saved `deepseek-yuanyu-0/deepseek-v4-pro` configuration passes
   three consecutive live model tests plus a final post-deployment probe through
   the new path.
@@ -253,7 +259,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
 - 2026-07-29 `1504126` `fix: distinguish temporary style edit busy state`:
   separates permanent post-writing style locks from temporary non-writing
   background activity, adds backend/frontend regressions, rebuilds the embedded
-  UI, restarts port 9898, and verifies `插翅难飞v2` can be changed to
+  UI, restarts port <legacy-port>, and verifies `插翅难飞v2` can be changed to
   `romance` after rollback.
 - 2026-07-29 `4e201b1` `test: classify consistency model calls`:
   adds the existing `internal/tools/check_consistency.go` direct model boundary
@@ -400,7 +406,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   The targeted manuscript test and production UI build pass. Runtime acceptance
   reached committed chapter 11 (volume 1 complete); chapter 12 remains
   uncommitted because both configured model backends became unavailable. The
-  rebuilt Web service is ready on port 9898, the project remains safely idle,
+  rebuilt Web service is ready on port <legacy-port>, the project remains safely idle,
   and the served production bundle no longer contains the removed annotation.
 - 2026-07-28 `2e61e8ae` `fix: recover writer errors and manuscript views`:
   replaces repeated Writer tool-contract repair loops with a clean
@@ -534,7 +540,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   restart/exclusion, strict-HTTP, retry, Character regression, and Foundation
   regression tests pass, as do CLI/Web compile gates and modified-package vet.
   The project wrapper still exits 1 after successful commands because the
-  pre-existing live Web process locks `web-9898.stderr.log` during cleanup.
+  pre-existing live Web process locks `web-<legacy-port>.stderr.log` during cleanup.
 - 2026-07-27 `pending` `feat: integrate characters into writing loop`:
   gives outline entries, chapter contracts, review findings, summaries,
   snapshots, relationships, and state changes stable Character IDs; builds a
@@ -605,7 +611,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   workflow header leaves limited space. The exact live 2048x1024 layout changed
   from a 10.2px tab row with `fullyVisible=false` to 42px with
   `fullyVisible=true`; all 14 desktop/mobile Foundation browser cases passed.
-  `main` was pushed and Web restarted on port 9898 as PID 34384.
+  `main` was pushed and Web restarted on port <legacy-port> as PID 34384.
 - 2026-07-20 `08f398b` `fix: show complete source roles without layout overlap`:
   Foundation CoreCast fallback cards now preserve and display the analyzed
   source character's role, description, traits, arc, goals, motivation,
@@ -615,7 +621,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   neither the top title nor the final role/rule content is covered. All 330 UI
   tests, the production build, and 14 desktop/mobile Playwright cases passed;
   live `梦中` validation found four detailed source roles and clean bottom
-  geometry. `main` was pushed and Web restarted on port 9898 as PID 9376.
+  geometry. `main` was pushed and Web restarted on port <legacy-port> as PID 9376.
 - 2026-07-20 `9e4eac1` `fix: expose analyzed source roles in foundation center`:
   Foundation state now recognizes a prepared adaptation as soon as its source
   manifest exists, instead of waiting for `plan.json`. Before target CoreCast
@@ -623,7 +629,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   character dossiers, and shows source-role candidates in the CoreCast tab
   without persisting them as target-story roles. Host/Web tests, all 329 UI
   tests, the production build, a `main` push, restart, and live `梦中` API/asset
-  probes passed; Web is running on port 9898 as PID 31548.
+  probes passed; Web is running on port <legacy-port> as PID 31548.
 - 2026-07-20 `2513dfa` `feat: redesign core cast workspace`: moves editable
   CoreCast content and the long AI draft out of the right inspector into the
   central co-create workspace. Roles, planned relationships, and adaptation
@@ -632,7 +638,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   labels are replaced by structured Chinese forms, completeness badges, editing
   guidance, and clear save/confirm semantics. All 328 UI tests and the production
   build pass; live Playwright validation on `重生` confirmed five-role and
-  six-relationship pagination. Web was rebuilt and restarted on port 9898.
+  six-relationship pagination. Web was rebuilt and restarted on port <legacy-port>.
 - 2026-07-20 `f5d3264` `fix: recover malformed cocreate responses`: ordinary
   co-create now gives malformed XML/CoreCast JSON and length-truncated protocol
   responses up to two bounded repair attempts. The system prompt enumerates the
@@ -641,7 +647,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   aliases while formal persistence remains strict. Focused `TestCoCreate` tests
   pass. Live recovery of the existing `重生` prompt produced a ready 300,000-word
   plan with five constrained characters and six relationships; Web was rebuilt
-  and restarted on port 9898.
+  and restarted on port <legacy-port>.
 - 2026-07-19 `21e4082` `fix: repair word budget without rewriting drafts`:
   normal `draft_chapter` and `commit_chapter` word-budget rejections no longer
   instruct Writer to call `draft_chapter(mode=write)` and replace the entire
@@ -799,7 +805,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   tools context-budget baseline; see
   `.codex/pr-pipeline/story-foundation/PR-08-dev-summary.md`.
   The final PR-08 build was deployed from its worktree to the unchanged
-  `novels-preview` runtime root; Web smoke validation passed on port 9898.
+  `novels-preview` runtime root; Web smoke validation passed on port <legacy-port>.
 - 2026-07-18 `f9c7738` `fix: preserve targeted polish at word gate`: when
   an already-completed chapter misses its configured word range during
   polishing, the structured rejection now tells Writer to retain the complete
@@ -988,7 +994,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   route, and makes runtime failover attempt the selected candidate through the
   normal request path so switch and failure events stay visible. The affected Go
   regressions and vet, all 297 UI tests, production build, restart, live route
-  repair for `重生v4`, and isolated browser acceptance passed. Port 9898 runs
+  repair for `重生v4`, and isolated browser acceptance passed. Port <legacy-port> runs
   PID 41972 with 正文创作 inheriting
   `deepseek-suifeng / deepseek-v4-pro`.
 - 2026-07-18 `0ed4996` `fix: prevent blank screen during project open`:
@@ -996,7 +1002,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   co-create visibility, covering the project-open reset render that previously
   dereferenced `snapshot.Phase` and emptied the React root. The null regression,
   all 296 UI tests, production build, restart, and an isolated live click on
-  `重生v4` passed with chapter progress visible and no browser errors. Port 9898
+  `重生v4` passed with chapter progress visible and no browser errors. Port <legacy-port>
   runs PID 46124.
 - 2026-07-18 `81cce909` `feat: converge manuscript workspace actions`:
   widens and aligns the manuscript reading surface, adds an accessible chapter
@@ -1006,7 +1012,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   discussion jump, and keeps continuation Draft co-create inside continuation.
   All 296 UI tests, the affected Go packages and vet, the production build, 20
   manuscript workspace browser scenarios, 12 expansion browser scenarios,
-  restart, and live route/static smoke checks passed. Port 9898 runs PID 30392.
+  restart, and live route/static smoke checks passed. Port <legacy-port> runs PID 30392.
 - 2026-07-18 `dec625f` `feat: redesign manuscript workspace`:
   moves all manuscript selection and writing controls into the right tool panel,
   keeps formal/candidate/outline/review/history content in the central reader,
@@ -1029,7 +1035,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   changes, and adds StrictMode component lifecycle coverage. The consolidated
   main history passes all 271 UI tests, the full Go suite, `go vet ./...`, the
   production build, and a four-step live project-switch DOM check. The rebuilt
-  service is running on port 9898. Final runtime inspection found that the local
+  service is running on port <legacy-port>. Final runtime inspection found that the local
   project store had independently fallen from 25 visible projects to one while
   validation was running; no recoverable copies were present in the app trash,
   user Recycle Bin, archive, or user-profile search, so that data-state anomaly
@@ -1039,7 +1045,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   repaired chapter. Successful `repair_arc` saves now consume the failed audit
   that requested that arc repair, while signed revise audits whose scoped
   content has already changed are ignored as stale. Focused regressions passed,
-  a clean-worktree production build succeeded, Web restarted on port 9898 as
+  a clean-worktree production build succeeded, Web restarted on port <legacy-port> as
   PID 27596, and live read-only inspection of `重生v4` advanced from the stale
   chapter-6 repair to chapter auditing. The unrelated dirty PR-03 expansion
   work still blocks an all-packages build in the shared worktree.
@@ -1063,7 +1069,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   from repeatedly submitting an impossible partial `save_original_planning_audit`
   call before chapter-outline generation can advance. Focused regressions passed
   10/10, the full Go suite and `go vet ./...` pass, and the production binary
-  builds successfully. The fixed binary was deployed to port 9898; live project
+  builds successfully. The fixed binary was deployed to port <legacy-port>; live project
   `重生v4` saved its chapter and arc audits without another missing-`scope_id`
   error, then advanced to `architect_long` chapter-outline repair.
 - 2026-07-16 `fix: keep workflow progress panel mounted`: removes the
@@ -1085,7 +1091,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   Focused and complete tools/agents/assets tests passed; the repository-wide run
   passed every package except one Web background-event timing case that passed
   immediately in isolation. The local Web service was rebuilt without touching
-  the existing UI worktree and restarted successfully on port 9898.
+  the existing UI worktree and restarted successfully on port <legacy-port>.
 - 2026-07-16 accepted PR-01 (this local commit), `feat: add safe manuscript revision publication`:
   adds candidate-isolated manuscript polish/rewrite sessions, stable-ID scope and
   revision/idempotency boundaries, independently signed contract/adaptation audits,
@@ -1101,7 +1107,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   pending review, and automatically fetches one full snapshot without losing
   newer runtime state. The focused and full UI suites (69/222 tests), full Go
   suite, `go vet ./...`, production UI/Go builds, restart smoke checks, and live
-  resume into chapter 2 passed. Port 9898 runs PID 124012.
+  resume into chapter 2 passed. Port <legacy-port> runs PID 124012.
 - 2026-07-15 `b5d7a34` `fix: complete planning audit recovery lifecycle`:
   makes the planning-audit write tool strict and fully describes nested
   dimensions/issues, carries the exact chapter repair location through routing,
@@ -1126,7 +1132,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   when resume does not start. Focused and full Web tests, 216 UI tests, UI/Go
   builds, Web vet, and diff checks passed. The repository-wide parallel Go run
   hit two Windows TempDir cleanup flakes; both named tests passed together when
-  rerun in isolation. Port 9898 was rebuilt and restarted as PID 137628; the
+  rerun in isolation. Port <legacy-port> was rebuilt and restarted as PID 137628; the
   affected project resumed at `volume_plan`, reports `grok-4.5`, has two active
   agents, and emitted new streaming events.
 - 2026-07-15 `8dd42ef` `fix: show planning workflow model`:
@@ -1135,7 +1141,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   so the running workflow header now reports the active model just like
   adaptation analysis and proposal review. Focused regressions, the full Web
   package tests, 213 UI tests, UI/Go production builds, restart smoke checks,
-  the live project snapshot, and a browser render all passed. Port 9898 now
+  the live project snapshot, and a browser render all passed. Port <legacy-port> now
   runs PID 133704 and the affected project visibly reports
   `正在运行 · grok-4.5`.
 - 2026-07-15 `95d7743c` `fix: distinguish background work from prose writing`:
@@ -1145,11 +1151,11 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   word-backed writing progress is preserved. The focused regression, full Go
   test suite, `go vet ./...`, and `git diff --check` pass. A clean detached
   build was deployed without including unrelated working-tree changes; port
-  9898 now runs PID 133616 and the real 59-source project reports every novel
+  <legacy-port> now runs PID 133616 and the real 59-source project reports every novel
   workflow step idle after its simulation analysis completed.
 - 2026-07-15 deployment checkpoint: rebuilt the Vite UI and
   `D:\ainovel\ainovel-cli.exe` from current `main` (`ba3c0f2`), stopped the old
-  9898 listener only after successful builds, and started PID 45924 with the
+  <legacy-port> listener only after successful builds, and started PID 45924 with the
   existing preview runtime root. `/`, `/api/runtime`, `/api/projects`, and one
   real-project summary snapshot passed; 23 projects are visible and persisted
   active adaptation work resumed.
@@ -1188,7 +1194,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   Yuanyu-to-Suifeng writing-stage shapes have sync and stream regression
   coverage. Focused fallback tests, full bootstrap tests, package vet, full Go
   tests, 213 UI tests, production build, and diff-check passed. A clean-commit
-  binary was deployed on port 9898. Project and global live probes both report
+  binary was deployed on port <legacy-port>. Project and global live probes both report
   Yuanyu `Invalid token`; Suifeng passes small probes. A controlled 80,008-rune
   input failed even with `max_tokens=8`: the provider reported about $3.376
   available versus about $5.102 required; `max_tokens=4096` required about
@@ -1272,7 +1278,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   feedback controls in the right panel. A cloned 100,000-word project completed
   3 volumes, 9 arcs, and 33 detailed chapters; all latest audit scopes pass.
   Full Go tests, Go vet, 213 UI tests, production build, and live Chrome
-  validation passed. The Web service was rebuilt on port 9898.
+  validation passed. The Web service was rebuilt on port <legacy-port>.
 - 2026-07-13 `55645c5` `fix: connect Codex credentials and reasoning controls`:
   added validated Codex credential upload and status checks, corrected the
   ChatGPT Codex Responses request/stream protocol, discovered the signed-in
@@ -1298,7 +1304,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   repair plan and applies 1-8 exact, non-overlapping replacements atomically;
   whole-chapter rewrite is conditional only after two non-improving batches or
   a structural story issue. Full Go tests, 210 UI tests, and live Chrome
-  switching/recovery validation passed. Service is running on port 9898.
+  switching/recovery validation passed. Service is running on port <legacy-port>.
 - 2026-07-12 pending `fix: make adaptation resume stage-monotonic`: proposal
   runtimes now pin the exact co-create intent/source/prompt dependency used at
   planner start. Resumes reuse that artifact or fail closed; they never
@@ -1458,7 +1464,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   The full Web Go package, five repeated concurrency regressions, the focused
   57-test UI file, and clean Vite builds passed. Live verification returned
   `女主播的秘密` in 43.85 seconds while an independent project returned in
-  4.17 seconds; both were HTTP 200. Web is running on port 9898 as PID `93192`
+  4.17 seconds; both were HTTP 200. Web is running on port <legacy-port> as PID `93192`
   with `index-B_f3EFQx.js`.
 - 2026-07-12 quality-first defaults for new projects: `738ff75`
   `feat: default new projects to quality stage routes`. New Web-created
@@ -1468,7 +1474,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   enabled backends; when only one recommended model is available, all stages
   fall back to that model. Existing projects are never migrated by this
   initializer. The focused creation tests and full `go test ./... -count=1`
-  suite passed. Web was rebuilt and restarted on port 9898 as PID `89560`.
+  suite passed. Web was rebuilt and restarted on port <legacy-port> as PID `89560`.
   Separately, all 19 existing runtime projects were explicitly migrated through
   the live project-model API and all 114 stage routes passed read-back checks.
 - 2026-07-12 adaptation detail-event ownership fix: `f696142`
@@ -1482,7 +1488,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   instead of replaying hundreds of misleading per-batch `Reused` messages.
   Focused real-project prompt validation, the full adaptation package, full Go
   suite, Go vet, all 206 Web tests, and the Vite production build passed. The
-  clean `81b6b929` build was installed and restarted on port 9898 as PID
+  clean `81b6b929` build was installed and restarted on port <legacy-port> as PID
   `19120`; runtime, project-list, and project-snapshot endpoints returned 200,
   and the failed project still retains 368/370 completed detail batches.
 - 2026-07-12 stage-aware model routing and context benchmark: `bb18f7f`
@@ -1494,7 +1500,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   completed 38 and retained two interrupted attempts without exceeding quota.
   Full Go tests, 206 UI tests, Vite build, report verification at desktop and
   mobile widths, live stage-route persistence round trip, and service smoke
-  checks passed. Web is live on port 9898 as PID `36840`; `天擎` was resumed
+  checks passed. Web is live on port <legacy-port> as PID `36840`; `天擎` was resumed
   at chapter 10 and reached `RUNNING` with `draft_chapter` active.
 - 2026-07-12 read-only `术士手册 - 副本` proposal-failure diagnosis:
   the skeleton was not regenerated or awaiting review. Final detail-plan
@@ -1514,7 +1520,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   project visible until the new snapshot returns. SSE startup is deferred until
   the initial snapshot finishes, avoiding duplicate session-open work. All 205
   UI tests, the Vite production build, and `git diff --check` passed. The Web
-  service is live on port 9898 as PID `91032` with the new bundle.
+  service is live on port <legacy-port> as PID `91032` with the new bundle.
 - 2026-07-12 context-window and summary-evidence fix: `ab36715`
   `fix: stabilize agent context management`. Static prompt
   assembly budgets no longer cap live agent conversations. Runtime windows now
@@ -1535,7 +1541,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   All 205 UI tests, the full Web Go package, production build, and
   `git diff --check` passed. A live `天擎` snapshot returned in 0.46 seconds
   with `adaptation/running` and six workflow steps in the first response. A
-  clean-worktree binary was deployed to port 9898 as PID `85384`; unrelated
+  clean-worktree binary was deployed to port <legacy-port> as PID `85384`; unrelated
   prompt/router/context changes in the main worktree were not included.
 - Latest progress-panel stability fix: `ea5b451` `fix: remove legacy progress UI fallback`:
   SSE snapshot updates that omit `workflow_progress` now retain the most recent
@@ -1545,7 +1551,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   fall back to the old UI. All 203 UI tests, the Vite production build,
   `git diff --check`, and live asset/API smoke checks passed. The served bundle
   contains the unified workflow panel and no legacy `workspace-progress`
-  component or styles. Web was restarted on port 9898 as PID `88864`.
+  component or styles. Web was restarted on port <legacy-port> as PID `88864`.
 - 2026-07-12 read-only duplicate-mainline diagnosis: live `武林高手 - 副本`
   checkpoint retains 92/94 proposal detail batches after correctly discarding
   batches 16-17 (target chapters 58-65) for duplicate event
@@ -1564,7 +1570,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   can the UI show `waiting_confirmation`. The Chinese running label is now
   “正在运行”. The full Web Go package, all 204 UI tests, Vite build,
   `git diff --check`, and live HTTP asset/API smoke checks passed. Web was
-  rebuilt and restarted on port 9898 as PID `89664`.
+  rebuilt and restarted on port <legacy-port> as PID `89664`.
 - Latest rollback-resume fix: `2f9f475` `fix: preserve adaptation review after rollback`:
   projects with a durable adaptation plan,
   proposal, volume review, or proposal runtime no longer restart stale source
@@ -1577,7 +1583,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   `go vet ./...`, and `git diff --check` passed. The parent project's 43
   already-completed current dossier batches were copied into the existing
   clone without changing clone-specific planning data. Web was rebuilt and
-  restarted on port 9898 as PID `87824`; the clone now reports analysis
+  restarted on port <legacy-port> as PID `87824`; the clone now reports analysis
   `done`, 43 dossier batches, and an idle runtime.
 - Latest mainline-binding recovery fix: `eee8841` `fix: repair duplicate
   mainline bindings`: detailed Arc planning now exposes only the current small
@@ -1589,7 +1595,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   so recovery will retain the other 119 batches. Focused regressions, the full
   `internal/host/adapt` package, `go test ./... -count=1`, `go vet ./...`, and
   `git diff --check` passed. Web was rebuilt from `12da231`, restarted on port
-  9898 as PID `76580`, and the runtime/project API smoke checks passed with the
+  <legacy-port> as PID `76580`, and the runtime/project API smoke checks passed with the
   intended preview runtime root and 19 visible projects.
 - Latest detailed-outline repair stability change: `171d387` `fix: reset
   polluted detail repair chains`: detailed
@@ -1630,7 +1636,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   fast-forwarded `main` by four commits from `f7da4ea9`, including project
   switching stability, adaptation planning convergence, first-click project
   opening, and bounded detail-prompt evidence. Rebuilt the Web UI and Go
-  executable, restarted port 9898 as PID `52192`, and verified the homepage,
+  executable, restarted port <legacy-port> as PID `52192`, and verified the homepage,
   runtime API, and 20-project listing.
 - Latest long-brief fix: `47716556` `fix: support long adaptation briefs`:
   removes the proposal-entry 16/8 rule-count rejection, preserves the complete
@@ -1639,7 +1645,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   defaults remain unchanged. Prompt-level and end-to-end regressions confirm a
   96-rule brief compiles, reaches proposal generation, and persists all 96
   rules. Full Go tests, Go vet, focused regressions, and diff checks passed.
-  Web was rebuilt/restarted on port 9898 as PID `82564`; runtime and project
+  Web was rebuilt/restarted on port <legacy-port> as PID `82564`; runtime and project
   API smoke checks passed with 20 projects visible.
 - Latest rollback fix: `51b6105` `fix: preserve adaptation rollback stages`:
   adaptation projects with generated
@@ -1649,7 +1655,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   response restore durable co-create state after the draft rollback, and the UI
   no longer clears that recovered state. Full Go tests, Go vet, 199 Web tests,
   the production build, focused rollback tests, and diff checks passed. Web was
-  rebuilt/restarted on port 9898 as PID `74016`; a live clone of `武林高手`
+  rebuilt/restarted on port <legacy-port> as PID `74016`; a live clone of `武林高手`
   passed all four transitions through blank, restored a ready/startable
   2304-character adaptation draft at the draft stage, and left the source plan
   SHA-256 unchanged. The temporary acceptance clone was moved to project trash.
@@ -1657,7 +1663,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   adds global multiple daily resume times, same-day catch-up, durable scheduler
   state, project default-on switches, explicit adaptation planning gates, and a
   dedicated Web schedule tab. Full Go tests, Go vet, 198 Web tests, production
-  build, API smoke tests, Playwright acceptance, and port 9898 restart passed.
+  build, API smoke tests, Playwright acceptance, and port <legacy-port> restart passed.
   All pre-existing feature branches were audited as ancestors of `main`; after
   the final push only `main` should remain locally and on `origin`.
 - Latest adaptation-audit change: `f6e89e3` `feat: add end-to-end adaptation audit safeguards`:
@@ -1668,7 +1674,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   Full `go test ./... -count=1`, `go vet ./...`, 191 Web tests, production build,
   and Playwright acceptance passed. The restarted `武林高手` audit correctly resolves
   source 1-284 / target 1-315 as legacy read-only `inconclusive`, with 13 findings,
-  zero blocking findings, no repair action, and immutable history. Port 9898 was
+  zero blocking findings, no repair action, and immutable history. Port <legacy-port> was
   restarted successfully with the external preview runtime root.
 - Latest project-clone changes: `25ef41f9` `feat: add independent project cloning`
   and `3d459489` `fix: preserve clone dialog text encoding`:
@@ -1678,7 +1684,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   conflict until paused. Full Go tests, Go vet, 186 Web tests, production UI
   build, diff checks, and live browser clone-dialog checks passed in a clean
   worktree. `main` was pushed through `3d459489`; the clean binary was installed
-  at `D:\ainovel\ainovel-cli.exe` and restarted on port 9898 as PID `85336`.
+  at `D:\ainovel\ainovel-cli.exe` and restarted on port <legacy-port> as PID `85336`.
 - Latest audit-safety change: `b46b8ff` `fix: audit only completed adaptation units`:
   replaces manual source/target ranges with one titled source-ending picker;
   derives Chapter completeness from valid full source-segment contracts and Arc
@@ -1700,7 +1706,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   1440/1024/390 no-overflow checks passed. After the fast-forward merge, full
   Go tests, Go vet, all 185 Web tests, the production UI build, and diff checks
   passed again. The local binary was rebuilt from `23d685b2`, restarted on
-  `http://127.0.0.1:9898` as PID `55416`, and `/api/runtime` returned HTTP 200.
+  `http://127.0.0.1:<legacy-port>` as PID `55416`, and `/api/runtime` returned HTTP 200.
   Race tests are unavailable because this Windows Go runtime has CGO disabled.
 - Current recovery/fix change: restored the usable local model registry after a
   Web test accidentally overwrote the real global config, isolated all Web
@@ -1728,7 +1734,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   APIs. Full Go tests, Go vet, 162 Web UI tests, UI production build, and staged
   diff checks passed. No live novel audit, repair, resume, or regeneration was
   run as acceptance. Commits `83856d9` and `b91731d` were pushed to
-  `origin/main`; Web was rebuilt/restarted on `http://127.0.0.1:9898` as PID
+  `origin/main`; Web was rebuilt/restarted on `http://127.0.0.1:<legacy-port>` as PID
   `65228` with the external preview runtime root.
 - Latest source/runtime change: `feat: add reviewed novel continuation workflow`:
   imported novels now stop at a durable planning gate instead of automatically
@@ -1742,7 +1748,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   bypass review. Validation passed for the clean staged-index full Go suite,
   161 Web UI tests, production UI build, `git diff --cached --check`, read-only
   Playwright inspection, and the restarted Web service at
-  `http://127.0.0.1:9898` (PID `12360`).
+  `http://127.0.0.1:<legacy-port>` (PID `12360`).
 - Latest source/runtime change: formal single-chapter outline
   revision after writing has started. The Web status panel can now select any
   completed, in-progress, or future chapter and send a natural-language edit
@@ -1756,7 +1762,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   Flat and layered outlines are both supported. Validation passed for focused
   Go packages, full `go test ./... -count=1`, 150 Web UI tests, production UI
   build, `git diff --check`, runtime smoke check, and read-only Playwright UI
-  inspection. Web was rebuilt/restarted on `http://127.0.0.1:9898` as PID
+  inspection. Web was rebuilt/restarted on `http://127.0.0.1:<legacy-port>` as PID
   `59596`.
 - Latest source/runtime change: current local commit
   `fix: keep adaptation on planned chapters at boundaries`:
@@ -1783,7 +1789,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   `go test ./... -count=1`, and `git diff --check` with Windows line-ending
   warnings only before and after rebasing onto `9a3955af`
   (`fix: resume web adaptation stages`). Local Web was rebuilt/restarted on
-  `http://127.0.0.1:9898` as PID `68984`; `武林高手`, `女主播的秘密`,
+  `http://127.0.0.1:<legacy-port>` as PID `68984`; `武林高手`, `女主播的秘密`,
   `大学刑法课`, and `术士手册` were recovered to running states.
 - Latest docs/test/static change: pending PR-05 (uncommitted per user request):
   Documented `simulation_mode` normal/reinforced behavior, default-normal
@@ -1851,7 +1857,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   snapping back to old retry values after the UI refreshed project-scoped
   model settings. Validation passed for UI tests, UI build, and
   `go test ./internal/entry/web ./assets -count=1`. Web was rebuilt and
-  restarted on `http://127.0.0.1:9898` as PID `15552`; a live project retry
+  restarted on `http://127.0.0.1:<legacy-port>` as PID `15552`; a live project retry
   save for `project-20260705003848-bbd0eb` was confirmed on disk and through
   the API as 14/14/2 after rebasing onto `origin/main`.
 - Latest source/runtime change: current local commit
@@ -1865,7 +1871,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   `*.part_###_ch####-####.txt` files, preserves chapter numbering, and prunes
   stale profile sources/reports after re-splitting. Validation passed for
   `go test ./internal/host/imp ./internal/host/sim ./internal/entry/web ./internal/host/adapt`.
-  Web was rebuilt and restarted on `http://127.0.0.1:9898` as PID `62212`.
+  Web was rebuilt and restarted on `http://127.0.0.1:<legacy-port>` as PID `62212`.
   Project `天擎` (`project-20260708231542-466290`) was started for both
   adaptation source analysis and simulation-profile analysis; simulation
   sources were rebalanced from 108 to 215 files and early events advanced to
@@ -1883,7 +1889,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   treated as likely unsupported chapter-title formats. Validation passed for
   `go test ./internal/entry/web ./internal/host/imp ./internal/host/sim` and
   full `go test ./...`; Web was rebuilt and restarted on
-  `http://127.0.0.1:9898` as PID `22424`.
+  `http://127.0.0.1:<legacy-port>` as PID `22424`.
 - Latest source/runtime change: current local commit
   `fix: split episode-section novel headings`:
   TXT import/adaptation splitting now recognizes combined episode/section
@@ -1972,14 +1978,14 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   Validation passed for focused skeleton-cache/rune-split regressions, full
   `go test ./internal/host/adapt -count=1`, and `git diff --check` with CRLF
   warnings only. Local Web was rebuilt and restarted via `restart-web.cmd` on
-  `http://127.0.0.1:9898` as PID `44120`; the root page returned HTTP 200.
+  `http://127.0.0.1:<legacy-port>` as PID `44120`; the root page returned HTTP 200.
 - Latest rebuild/static alignment change: current local commit
   `chore: align tracked web static index`:
   Pulled `origin/main` fast-forward from `bc770905` to `8f2b7c7d`
   (`fix: stabilize web static build output`), rebuilt and restarted local Web
   with the project-local Go 1.25.5 toolchain, stopped PID `47680`, and started
-  `http://127.0.0.1:9898` as PID `63252`. The restart succeeded and
-  `Invoke-WebRequest http://127.0.0.1:9898/` returned HTTP 200. The build
+  `http://127.0.0.1:<legacy-port>` as PID `63252`. The restart succeeded and
+  `Invoke-WebRequest http://127.0.0.1:<legacy-port>/` returned HTTP 200. The build
   revealed that the newly tracked static `index.html` contained one extra blank
   line not emitted by Vite; the tracked file was aligned to the actual build
   output so subsequent Web builds/restarts should stay clean.
@@ -2030,8 +2036,8 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   Pulled `origin/main` fast-forward from `7e5b24d4` to `aaeeb2a7`
   (`fix: budget long-source adaptation splits`), rebuilt tracked Web static
   assets, and restarted local Web with repo-local Go on `PATH` via
-  `restart-web.cmd -Port 9898 -RuntimeRoot C:\Users\RondleLiu\.ainovel\novels-preview`.
-  The restart stopped PID `58844`, started `http://127.0.0.1:9898` as PID
+  `restart-web.cmd -Port <legacy-port> -RuntimeRoot C:\Users\RondleLiu\.ainovel\novels-preview`.
+  The restart stopped PID `58844`, started `http://127.0.0.1:<legacy-port>` as PID
   `55100`, and `/api/runtime` returned healthy with 18 visible projects and
   active project `project-20260705003848-bbd0eb`.
 - Latest source/runtime change: `2f874c9`
@@ -2049,7 +2055,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   event rows now show warning/error summary plus detail so retry counts are
   visible. Validation passed for full `internal/host/adapt`, focused
   bootstrap/web/sim packages, Web UI tests/build, `git diff --check` with CRLF
-  warnings only, and local Web restart on `http://127.0.0.1:9898` as PID
+  warnings only, and local Web restart on `http://127.0.0.1:<legacy-port>` as PID
   `58844`.
 - Latest source/runtime change: `0bff8c7`
   `fix: switch models on text rate limits`:
@@ -2061,7 +2067,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   `deepseek-suifeng-1` candidate pool, requiring each exhausted backend to be
   called only once before moving on. Validation passed for focused
   `internal/bootstrap` runtime fallback tests, and local Web was rebuilt and
-  restarted on `http://127.0.0.1:9898` as PID `26484`.
+  restarted on `http://127.0.0.1:<legacy-port>` as PID `26484`.
 - Latest source/runtime change: current local commit
   `fix: chunk long adaptation proposals by input size`:
   Long `arc`/`free` adaptation proposal routing now considers source input
@@ -2072,7 +2078,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   full `source_reports` in one model request and hitting `content_too_long` or
   HTML gateway error pages. Validation passed for full `internal/host/adapt`,
   focused Web adaptation/co-create backend tests, `git diff --check` with CRLF
-  warnings only, and local Web rebuild/restart on `http://127.0.0.1:9898` as
+  warnings only, and local Web rebuild/restart on `http://127.0.0.1:<legacy-port>` as
   PID `30196`.
 - Latest source/runtime change: current local commit
   `fix: split simulation retry budgets`:
@@ -2086,14 +2092,14 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   such as `语料分析失败`. Validation passed for focused sim tests,
   `go test ./internal/host/sim ./internal/host -count=1`,
   `go test ./internal/entry/web -count=1`, Web UI tests/build,
-  `git diff --check`, and local Web restart on `http://127.0.0.1:9898` as PID
+  `git diff --check`, and local Web restart on `http://127.0.0.1:<legacy-port>` as PID
   `55452`.
 - Latest rebuild/restart change: current local commit
   `0b43458` `chore: rebuild web static after splitter fix`:
   After the splitter fix was pushed, local Web was rebuilt and restarted via
-  `restart-web.cmd -Port 9898 -RuntimeRoot C:\Users\RondleLiu\.ainovel\novels-preview`.
+  `restart-web.cmd -Port <legacy-port> -RuntimeRoot C:\Users\RondleLiu\.ainovel\novels-preview`.
   The restart rebuilt the tracked static Web index, started
-  `http://127.0.0.1:9898` as PID `8896`, and `/api/runtime` returned healthy
+  `http://127.0.0.1:<legacy-port>` as PID `8896`, and `/api/runtime` returned healthy
   with 19 visible projects.
 - Latest source change: current local commit
   `59875ba` `fix: support compact source headings`:
@@ -2116,7 +2122,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   another configured candidate/fallback provider instead of failing the whole
   source-analysis or co-create step. Validation passed for focused backend
   tests, full `go test ./...`, and local Web rebuild/restart on
-  `http://127.0.0.1:9898` as PID `17368`. Known unrelated uncommitted local
+  `http://127.0.0.1:<legacy-port>` as PID `17368`. Known unrelated uncommitted local
   edits remain in `internal/host/imp/splitter.go` and
   `internal/host/imp/splitter_test.go`.
 - Latest source/runtime change: current local commit
@@ -2141,7 +2147,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   and `这不是我印象中的女魔头`; `女神攻略` and `诡案组` are complete through
   reports/foundation and need dossier-only backfill. Validation passed for
   full `go test ./...`, focused Web UI Vitest, Vite build, `git diff --check`
-  with CRLF warnings only, and local Web restart on `http://127.0.0.1:9898`
+  with CRLF warnings only, and local Web restart on `http://127.0.0.1:<legacy-port>`
   as PID `30172`.
 - Latest source/runtime change: current local commit
   `feat: stabilize long-form adaptation co-create and planner batches`:
@@ -2171,7 +2177,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   Validation passed for focused and full `internal/host/imp` and
   `internal/entry/web` Go tests, splitter packaging check on `术师手册.txt`,
   runtime cleanup verification, and local Web rebuild/restart on
-  `http://127.0.0.1:9898` as PID `59984`.
+  `http://127.0.0.1:<legacy-port>` as PID `59984`.
 - Latest source change: pending local changes
   `fix: strip novel-library cocreate progress`:
   Web novel-library save/load now allow-lists adaptation source analysis and
@@ -2185,7 +2191,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   co-create state while adaptation analysis remains `done`.
   Validation passed for focused and full Web Go tests, full Web UI Vitest,
   Vite build, `git diff --check` with CRLF warnings only, local Web restart on
-  `http://127.0.0.1:9898` as PID `57712`, and HTTP/file smoke checks confirming
+  `http://127.0.0.1:<legacy-port>` as PID `57712`, and HTTP/file smoke checks confirming
   no forbidden co-create progress paths remain. This batch is not committed yet
   because the worktree already contains broad unrelated changes, including
   pre-existing edits in the same frontend/static bundle files.
@@ -2218,7 +2224,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   Validation passed for focused provider/co-create/briefing tests, full
   `go test ./internal/retrypolicy ./internal/bootstrap ./internal/host ./internal/host/adapt ./internal/entry/web -count=1`,
   full Web UI Vitest, Vite build, `git diff --check` on changed source files,
-  and local Web restart on `http://127.0.0.1:9898` as PID `62520`. Runtime
+  and local Web restart on `http://127.0.0.1:<legacy-port>` as PID `62520`. Runtime
   snapshot confirmed `这不是我印象中的女魔头`
   (`untitled-novel-20260705003748-de4f76`) is resumable with 19/19 briefing
   decisions resolved and no pending decisions.
@@ -2236,7 +2242,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   after switching or creating another project to avoid stale state pollution.
   Validation passed for focused and full Web UI Vitest, Vite build, focused Go
   Web tests, `git diff --check`, local Web restart on
-  `http://127.0.0.1:9898` as PID `63112`, and HTTP smoke checks for `/`,
+  `http://127.0.0.1:<legacy-port>` as PID `63112`, and HTTP smoke checks for `/`,
   `/api/runtime`, and `/api/projects`.
 - Latest integrated change: current local commit
   `fix: stabilize web cocreate and source foundation resume`:
@@ -2279,7 +2285,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   avoid text overlap, and writer `draft_chapter` can infer a missing chapter
   only when the runtime context is uniquely safe. Validation passed for
   `go test ./...`, Web UI Vitest (96 tests), and Vite build. Local Web was
-  rebuilt and restarted first on `http://127.0.0.1:9898` as PID `59568`.
+  rebuilt and restarted first on `http://127.0.0.1:<legacy-port>` as PID `59568`.
 - Latest source change: current local commit
   `fix: neutralize adaptation dossier generation`:
   Adaptation co-create dossiers now use prompt version `v2` and store neutral
@@ -2292,7 +2298,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   novels, and current checks validate every dynamic batch range/signature.
   Validation passed for focused adapt/store/host/web tests and full
   `go test ./internal/...`; local Web was rebuilt/restarted on
-  `http://127.0.0.1:9898` as PID `60036`. Current project generated
+  `http://127.0.0.1:<legacy-port>` as PID `60036`. Current project generated
   dossier/briefing artifacts for `project-20260705003734-24bbf4` were deleted
   so Analyze can regenerate v2 dossiers from preserved source reports.
 - Latest source change: current local commit
@@ -2305,7 +2311,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   host events, and long-form adaptation co-create briefing progress is emitted
   as `ADAPT` events. Validation passed for focused adapt/web Go tests and full
   `go test ./internal/...`; local Web was rebuilt/restarted on
-  `http://127.0.0.1:9898` as PID `42772`, and `/api/runtime` returned healthy.
+  `http://127.0.0.1:<legacy-port>` as PID `42772`, and `/api/runtime` returned healthy.
 - Latest source change: pending local changes
   `fix: refresh project model provider renames`:
   Web global model/provider edits now propagate the edited
@@ -2331,7 +2337,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   report count/prompt size, with merge checkpoints saved after successful
   batches and cleared after final save. Validation passed for full Web UI tests,
   full `go test ./...`, Vite build, `git diff --check` with CRLF warnings only,
-  and local Web restart on `http://127.0.0.1:9898` as PID `59192`. The final
+  and local Web restart on `http://127.0.0.1:<legacy-port>` as PID `59192`. The final
   static bundle no longer contains the removed save-dialog markers.
 - Latest source change: current local commit
   `fix: hydrate project event history on open`:
@@ -2344,7 +2350,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   event panel shows historical ADAPT/SIMULATE rows immediately after switching
   projects instead of waiting for the next live event. Validation passed for
   focused and full Web UI tests, focused Go web tests, Vite build, local Web
-  restart on `http://127.0.0.1:9898`, and Playwright switching across seven
+  restart on `http://127.0.0.1:<legacy-port>`, and Playwright switching across seven
   running projects with no `暂无事件` state.
 - Latest source change: `20efdd9`
   `fix: preserve project events on open`:
@@ -2375,7 +2381,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   renames; model/Base URL/protocol/auth/API-key changes still probe. Validation
   passed for focused/full Web UI tests, focused Go host/web tests before and
   after Web build, Vite build, and `git diff --check` with CRLF warnings only.
-  Local Web was rebuilt/restarted on `http://127.0.0.1:9898`; old PID `18908`
+  Local Web was rebuilt/restarted on `http://127.0.0.1:<legacy-port>`; old PID `18908`
   was stopped, new PID is `54724`, and `/` plus `/api/models` returned HTTP 200.
 - Latest source change: current local commit
   `feat: add adaptation cocreate briefing`:
@@ -2389,7 +2395,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   briefing snapshot before falling back to the all-book dossier. Validation
   passed for Web UI tests/build, focused Go tests, full `go test ./internal/...`,
   and `git diff --check` with CRLF warnings only. Local Web was rebuilt and
-  restarted on `http://127.0.0.1:9898` with runtime root
+  restarted on `http://127.0.0.1:<legacy-port>` with runtime root
   `C:\Users\RondleLiu\.ainovel\novels-preview` as PID `59188`; `/`,
   `/api/runtime`, and `/api/models` returned HTTP 200.
 - Latest source change: current local commit
@@ -2416,7 +2422,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   architect, writer, and editor routes. Validation passed for focused and full
   changed-package Go tests, full Web UI tests, Vite build, and
   `git diff --check` with CRLF warnings only. Local Web was rebuilt/restarted
-  on `http://127.0.0.1:9898` with runtime root
+  on `http://127.0.0.1:<legacy-port>` with runtime root
   `C:\Users\RondleLiu\.ainovel\novels-preview` as PID `56176`; HTTP smoke
   checks for `/`, `/api/runtime`, and `/api/models` returned healthy responses.
 - Latest source change: current local commit
@@ -2428,7 +2434,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   preventing `json: cannot unmarshal string into Go value of type
   domain.TimelineEvent` from escaping as a global Web error banner. Validation
   passed for focused domain/import/store tests, full `go test ./...`, Web
-  rebuild/restart on `http://127.0.0.1:9898` as PID `57820`, HTTP smoke checks,
+  rebuild/restart on `http://127.0.0.1:<legacy-port>` as PID `57820`, HTTP smoke checks,
   and `git diff --check` with CRLF warnings only.
 - Latest source change: current local commit
   `fix: unblock concurrent web analysis controls`:
@@ -2445,7 +2451,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   from `D:\ainovel\novel` and `D:\ainovel\novel\split_packages`.
   Validation passed for focused Web UI tests, full Web UI tests, Vite build,
   full `go test ./...`, `git diff --check` with CRLF warnings only, Web restart
-  on `http://127.0.0.1:9898` as PID `55992`, and HTTP smoke checks for runtime,
+  on `http://127.0.0.1:<legacy-port>` as PID `55992`, and HTTP smoke checks for runtime,
   project listing, and the affected source/corpus project snapshots.
 - Latest source change: current local commit
   `fix: restore simulation uploads after refresh`:
@@ -2456,7 +2462,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   project; stale project-open, SSE, simulation-analysis, and adaptation-analysis
   responses are ignored after the user switches elsewhere. Validation passed for
   full Web UI tests, Vite build, full `go test ./...`, and local Web restart on
-  `http://127.0.0.1:9898` as PID `23060`.
+  `http://127.0.0.1:<legacy-port>` as PID `23060`.
 - Latest source change: current local commit
   `fix: remove text source upload size limit`:
   Web TXT/MD source uploads no longer use the old 10 MiB per-file limit or the
@@ -2466,7 +2472,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   Validation passed for focused Web upload regressions, full
   `./internal/entry/web`, full `go test ./...`, `git diff --check` with CRLF
   warnings only, Vite build via `restart-web.cmd`, and HTTP smoke checks on
-  `http://127.0.0.1:9898`; local Web restarted as PID `53056`.
+  `http://127.0.0.1:<legacy-port>`; local Web restarted as PID `53056`.
 - Latest source change: current local commit
   `feat: allow parallel analysis and partial export`:
   Web export remains a read-only current-progress operation and can run without
@@ -2479,7 +2485,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   simulation-profile flow and start profile analysis while adaptation source
   analysis is still running. Validation passed for Web UI tests, Vite build,
   focused and full Go tests, and `git diff --check` with CRLF warnings only.
-  The local Web service was rebuilt/restarted on `http://127.0.0.1:9898` with
+  The local Web service was rebuilt/restarted on `http://127.0.0.1:<legacy-port>` with
   runtime root `C:\Users\RondleLiu\.ainovel\novels-preview` as PID `35376`;
   HTTP `/`, `/api/runtime`, and `/api/projects` returned 200.
 - Previous source change: current local commit
@@ -2510,7 +2516,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   work area. Validation passed for focused Web API/UI tests, the broader
   `./internal/entry/web ./internal/host/flow ./internal/tools ./internal/store`
   Go package set, UI build, `git diff --check` with CRLF warnings only, and a
-  live smoke on `http://127.0.0.1:9898`; project `梦中的女孩3` returned 59 outline
+  live smoke on `http://127.0.0.1:<legacy-port>`; project `梦中的女孩3` returned 59 outline
   rows and chapter 1 final content through the new endpoint. The local Web
   service was rebuilt and restarted with runtime root
   `C:\Users\RondleLiu\.ainovel\novels-preview` as PID `40604`.
@@ -2540,7 +2546,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   the user gives only a vague length label such as `长篇`, the Web UI opens the
   target-word confirmation step instead of mapping that label to a fixed number.
   Per-chapter counts such as `每章5000字` are ignored for total-budget inference.
-  The local Web service was rebuilt and restarted on `http://127.0.0.1:9898`
+  The local Web service was rebuilt and restarted on `http://127.0.0.1:<legacy-port>`
   with runtime root `C:\Users\RondleLiu\.ainovel\novels-preview` and PID
   `43080`.
 - Previous source change: `a03cab2`
@@ -2640,7 +2646,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
 - Working tree: clean after committed adaptation mode guidance and free-source
   label UI fixes, plus
   ignored local `.codex/`, `.playwright-mcp/`, and output/runtime artifacts.
-- Runtime: local Web was rebuilt and restarted on `http://127.0.0.1:9898` from
+- Runtime: local Web was rebuilt and restarted on `http://127.0.0.1:<legacy-port>` from
   source commit `ee471d2`; the restarted process is PID `47552`.
 - Validation:
   `D:\ainovel\.codex\tools\go1.25.5\go\bin\go.exe test ./internal/entry/startup ./internal/entry/tui ./internal/entry/web ./internal/host ./internal/tools -run "Test(DefaultAdaptationBrief|AdaptationModeContract|AdaptCoCreateOpener|AdaptModeConfirmStartsCoCreateWithSelectedMode|ContextToolClarifiesFreeFullRewriteSourceRefsAreAnchors|ContextToolShowsDisabledWordToleranceForFullRewrite|AdaptationFreePlanDoesNotRequireSourceRead|PreserveDetailsPlanAndDraftSteerTowardFullSourceBackedChapter|LoadKeepsAdaptationGuidanceOutOfBaseWriterPrompt|ProjectAdaptCoCreateCheckpointRestoresModeAndCommits)" -count=1`
@@ -2654,7 +2660,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   `D:\ainovel\.codex\tools\go1.25.5\go\bin\go.exe test ./... -count=1`
   passed;
   `git diff --check` passed with CRLF warnings only;
-  `.\restart-web.cmd -Port 9898` passed after prepending the project-local Go
+  `.\restart-web.cmd -Port <legacy-port>` passed after prepending the project-local Go
   1.25.5 bin directory to PATH, rebuilding Web UI and Go executable, stopping
   PID `44864`, and starting PID `47552`;
   `GET /`, `GET /api/runtime`, `GET /api/projects`, and the active project
@@ -2676,7 +2682,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   tests;
   `npm.cmd --prefix internal/entry/web/ui run build` passed;
   `git diff --check` passed with CRLF warnings only;
-  `.\restart-web.cmd -Port 9898` initially failed because `go` was not on PATH,
+  `.\restart-web.cmd -Port <legacy-port>` initially failed because `go` was not on PATH,
   then passed after prepending the project-local Go 1.25.5 bin directory,
   rebuilding Web UI and Go executable, stopping PID `5276`, and starting PID
   `37084`;
@@ -2689,7 +2695,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   passed;
   `D:\ainovel\.codex\tools\go1.25.5\go\bin\go.exe test ./internal/entry/web -run TestProjectSessionBuildAdaptationProposal -count=1`
   passed; `git diff --check` passed with CRLF warnings only;
-  `.\restart-web.cmd -Port 9898` rebuilt and restarted Web twice during live
+  `.\restart-web.cmd -Port <legacy-port>` rebuilt and restarted Web twice during live
   validation, most recently stopping PID `34544` and starting PID `41644`;
   `GET /api/runtime` and `/api/projects` returned HTTP 200.
   Live retry for project `untitled-novel-20260703122424-2e6c6b` generated an
@@ -2701,8 +2707,8 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   Volume dedupe validation passed:
   `npm test -- src/workspace-progress.test.js`;
   `npm run build`;
-  `.\restart-web.cmd -Port 9898` rebuilt the Web UI/Go executable, stopped PID
-  `28960`, and restarted Web on `http://127.0.0.1:9898` as PID `11268`;
+  `.\restart-web.cmd -Port <legacy-port>` rebuilt the Web UI/Go executable, stopped PID
+  `28960`, and restarted Web on `http://127.0.0.1:<legacy-port>` as PID `11268`;
   Playwright verified the live project proposal still has 60 chapters / 5 stored
   volumes and the UI shows `全卷` plus exactly 5 volume options, with exactly 5
   proposal workspace volume blocks.
@@ -2711,7 +2717,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   `D:\ainovel\.codex\tools\go1.25.5\go\bin\go.exe test ./internal/host/adapt -count=1`;
   `D:\ainovel\.codex\tools\go1.25.5\go\bin\go.exe test ./internal/entry/web ./internal/host ./internal/host/adapt -count=1`;
   `git diff --check` passed with CRLF warnings only;
-  `.\restart-web.cmd -Port 9898` rebuilt the Web UI and Go executable, stopped
+  `.\restart-web.cmd -Port <legacy-port>` rebuilt the Web UI and Go executable, stopped
   PID `16704`, and restarted Web as PID `31592`;
   snapshot structure check for project `untitled-novel-20260703215407-d41d36`
   confirmed the existing proposal is still status `proposal`, 60 chapters, 5
@@ -2722,7 +2728,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   `D:\ainovel\.codex\tools\go1.25.5\go\bin\go.exe test ./internal/host/adapt -count=1`;
   `D:\ainovel\.codex\tools\go1.25.5\go\bin\go.exe test ./internal/entry/web ./internal/host ./internal/host/adapt -count=1`;
   `git diff --check` passed with CRLF warnings only;
-  `.\restart-web.cmd -Port 9898` rebuilt the Web UI and Go executable, stopped
+  `.\restart-web.cmd -Port <legacy-port>` rebuilt the Web UI and Go executable, stopped
   PID `31592`, and restarted Web as PID `10368`;
   `GET /api/runtime` and `/api/projects` returned HTTP 200;
   current user project `untitled-novel-20260703215407-d41d36` still has saved
@@ -2733,7 +2739,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   `D:\ainovel\.codex\tools\go1.25.5\go\bin\go.exe test ./internal/host/adapt -count=1`;
   `D:\ainovel\.codex\tools\go1.25.5\go\bin\go.exe test ./internal/entry/web ./internal/host ./internal/host/adapt -count=1`;
   `git diff --check` passed with CRLF warnings only;
-  `.\restart-web.cmd -Port 9898` rebuilt the Web UI and Go executable, stopped
+  `.\restart-web.cmd -Port <legacy-port>` rebuilt the Web UI and Go executable, stopped
   PID `10368`, and restarted Web as PID `5276`;
   `GET /api/runtime` and `/api/projects` returned HTTP 200;
   current user project `untitled-novel-20260703215407-d41d36` still has saved
@@ -2743,7 +2749,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
 
 - 2026-07-11 `26f44d4` `fix: show all discovered provider models`: replace the
   filtered model `datalist` with a real select after discovery, show the number
-  of supported models, rebuild embedded assets, restart port 9898, and verify
+  of supported models, rebuild embedded assets, restart port <legacy-port>, and verify
   the live Grok OAuth discovery returns 11 models.
 
 - 2026-07-05 current local commit `test: stabilize legacy library backfill test`:
@@ -2774,7 +2780,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   仿写语料, 小说改编 source analysis, and external novel import while keeping JSON
   simulation profile uploads bounded. Added regressions proving both simulation
   and adaptation source uploads accept files larger than the former 10 MiB
-  limit, rebuilt/restarted the local Web service on `http://127.0.0.1:9898`, and
+  limit, rebuilt/restarted the local Web service on `http://127.0.0.1:<legacy-port>`, and
   verified HTTP `/`, `/api/runtime`, and `/api/projects`.
 
 - 2026-07-04 current local commit `style: tighten style prompt anti-ai guidance`:
@@ -2790,7 +2796,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   long-form targets. Validation passed for all Web UI tests, Vite build, focused
   co-create backend tests, full `internal/entry/web` tests, and `git diff
   --check` with CRLF warnings only. The local Web service was rebuilt/restarted
-  on port `9898` after prepending repo-local Go to PATH, and `/api/runtime` plus
+  on port `<legacy-port>` after prepending repo-local Go to PATH, and `/api/runtime` plus
   `/api/projects` returned HTTP 200.
 
 - 2026-07-04 `a03cab2` `fix: normalize web export file extension`:
@@ -2799,7 +2805,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   selected format, and keeps all paths scoped under the project `exports`
   directory. Validation passed for focused Web export tests, export renderer
   tests, full `internal/entry/web` tests, and the restarted local Web service
-  on `http://127.0.0.1:9898` (PID `45780`).
+  on `http://127.0.0.1:<legacy-port>` (PID `45780`).
 
 - 2026-07-04 `ee471d2` `fix: split adaptation mode guidance`:
   splits adaptation prompting/runtime guidance by effective mode so
@@ -2871,7 +2877,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   coverage and expand sparse `source_chapters` before saving, clear invalid
   chunked proposal runtime checkpoints on final validation failure, add
   regression tests for the `does not cover source chapter` failure class,
-  rebuild/restart Web on `http://127.0.0.1:9898` as PID `41644`, and verify the
+  rebuild/restart Web on `http://127.0.0.1:<legacy-port>` as PID `41644`, and verify the
   failed project now has a confirmed 18-chapter adaptation plan and active
   chapter-1 writing run.
 - 2026-07-03 `331162c` `fix: restore web cocreate action controls`: consumes
@@ -2879,15 +2885,15 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   draft is fresh/startable, parses paragraph-style AI choice questions into
   clickable suggestions, keeps long right-pane draft previews scrollable so
   action buttons remain visible, rebuilds embedded Web assets, restarts local
-  Web on `http://127.0.0.1:9898` as PID `36560`, and verifies UI/backend paths.
+  Web on `http://127.0.0.1:<legacy-port>` as PID `36560`, and verifies UI/backend paths.
 - 2026-07-03 `pending` `docs: record latest restart check`: fetched
   `origin/main` with no new commits beyond the current branch, rebuilt the Web
-  UI and Go executable, restarted local Web on `http://127.0.0.1:9898` as PID
+  UI and Go executable, restarted local Web on `http://127.0.0.1:<legacy-port>` as PID
   `15252`, and verified `/`, `/api/runtime`, and `/api/models`.
 - 2026-07-03 `pending` `docs: record latest pull and restart`: fast-forwarded
   `main` from `e838341` to `21200be`, rebased the maintenance checkpoint after
   `origin/main` advanced to `861b527`, rebuilt the Web UI and Go executable,
-  restarted local Web on `http://127.0.0.1:9898` as PID `26304`, verified `/`,
+  restarted local Web on `http://127.0.0.1:<legacy-port>` as PID `26304`, verified `/`,
   `/api/runtime`, and `/api/models`, and recorded that restart commands in this
   shell need the project-local Go 1.25.5 bin directory prepended to `PATH`.
 - 2026-07-03 `411c1df` `fix: retry adaptation planner calls`: wraps adaptation
@@ -2895,7 +2901,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   messages, keeps malformed-JSON/schema repairs bounded, fills missing
   `word_budget` data locally from legacy budget fields or source chapter anchors,
   adds regression tests for transient model failure and missing chapter budgets,
-  restarts `http://127.0.0.1:9898`, and verifies a safe 20-chapter / 4-volume
+  restarts `http://127.0.0.1:<legacy-port>`, and verifies a safe 20-chapter / 4-volume
   proposal plus single-chapter, range, and volume proposal revisions.
 - 2026-07-03 `1ed3100` `fix: stabilize long-form adaptation proposal batches`:
   keeps model-chosen long-form skeleton/volume planning but splits oversized
@@ -2903,14 +2909,14 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   missing chapter returns by sending accepted chapters plus the previous model
   output back to the model, limits repair attempts, adds detailed Web ADAPT
   progress/warn events for proposal generation and revision, recomputes totals
-  after proposal revisions, restarts `http://127.0.0.1:9898`, and verifies with
+  after proposal revisions, restarts `http://127.0.0.1:<legacy-port>`, and verifies with
   `go test ./...`.
 - 2026-07-03 `389b0ab` `feat: add adaptation proposal review UI`: moves saved
   adaptation proposals into the central workbench, adds readable chapter cards,
   right-side single-chapter/range/whole-volume proposal revision controls,
   preserves saved proposals across refresh even when the upload source cannot be
   reconstructed, expands frontend/API tests, regenerates embedded Web assets,
-  restarts `http://127.0.0.1:9898`, and verifies the UI with Playwright on a
+  restarts `http://127.0.0.1:<legacy-port>`, and verifies the UI with Playwright on a
   safe test project. The later two-stage volume-review workflow remains a
   follow-up checkpoint.
 - 2026-07-03 `checkpoint` `checkpoint: persist adaptation proposal review foundation`:
@@ -2944,18 +2950,18 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   project-scoped model deletion, protects the active default route, removes
   deleted routes from role/fallback config, refreshes in-memory model routing,
   persists updated config, exposes Web delete controls, rebuilds embedded Web
-  assets, restarts `http://127.0.0.1:9898`, and verifies backend/frontend/live
+  assets, restarts `http://127.0.0.1:<legacy-port>`, and verifies backend/frontend/live
   browser behavior.
 - 2026-07-02 `ff9d2c4` `docs: record latest update and restart`: fetched
   latest `origin/main` from `79703a9` to `bba6eea`, rebased the local
   maintenance commit, rebuilt and restarted the local Web service via
   `.\restart-web.cmd` with the project-local Go 1.25.5 toolchain on PATH,
   stopped old PID `89184`, started PID `236716`, and verified
-  `http://127.0.0.1:9898` plus `/api/runtime`.
+  `http://127.0.0.1:<legacy-port>` plus `/api/runtime`.
 - 2026-07-02 `fef41a9` `docs: record latest pull and restart`: pulled latest
   `origin/main` with `git pull --ff-only`, fast-forwarded to `79703a9`, rebuilt
-  and restarted the local Web service via `scripts\restart-web.ps1 -Port 9898`,
-  verified `http://127.0.0.1:9898`, `/api/runtime`, `/api/projects`, and
+  and restarted the local Web service via `scripts\restart-web.ps1 -Port <legacy-port>`,
+  verified `http://127.0.0.1:<legacy-port>`, `/api/runtime`, `/api/projects`, and
   confirmed port 9904 had no listener.
 - 2026-07-02 `a83b2af` `feat: surface adaptation planning state in UI`:
   completed the strict-agent adaptation proposal/UI pipeline after independent
@@ -2975,17 +2981,17 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   `POST /api/models/add`, enabled no-project `Add and use` for global provider
   registration, allowed logged-in Grok OAuth to become visible in the global
   default model selector after confirmation, added backend/frontend coverage,
-  regenerated embedded Web assets, rebuilt the local binary, and restarted port 9898.
+  regenerated embedded Web assets, rebuilt the local binary, and restarted port <legacy-port>.
 - 2026-07-01 `aba5224` `feat: add web default model control`: added global
   `/api/models` and `/api/models/default` endpoints, synchronized server/session
   config snapshots for newly opened projects, added the Web "瑜版挸澧犳妯款吇濡€崇€? selector,
   kept Grok callback actions usable outside global busy state, added tests,
-  regenerated embedded Web assets, rebuilt the local binary, and restarted port 9898.
+  regenerated embedded Web assets, rebuilt the local binary, and restarted port <legacy-port>.
 - 2026-07-01 `6a52385` `fix: allow global web grok login`: added global Web
   Grok OAuth start/poll/complete/status endpoints, routed frontend Grok login
   calls to them when no project is active, kept Login/Poll/Status clickable
   without an open project, added backend/frontend coverage, regenerated embedded
-  Web assets, rebuilt the local binary, and restarted port 9898.
+  Web assets, rebuilt the local binary, and restarted port <legacy-port>.
 - 2026-07-01 `5c9ff38` `fix: open web grok oauth login`: added an opt-in
   backend system-browser opener for Web Grok OAuth login start, frontend pending
   and no-project feedback, popup/manual-link fallbacks, API/backend tests, and
@@ -2994,7 +3000,7 @@ page. The normal local Web URL is `http://127.0.0.1:9898`.
   display, normal co-create total-word controls, sticky right-side co-create
   launch/planning area, overflow/mobile layout fixes, total-vs-per-chapter
   user-rule wording, regenerated embedded Vite assets, rebuilt the local binary,
-  and restarted only port 9898.
+  and restarted only port <legacy-port>.
 - 2026-07-01 `6549c2a` `Implement backend word budget contract`: added the
   persisted `WordBudget` contract, quick/co-create payload handling, startup
   prompt injection, `novel_context` runtime budget payload, outline-derived
